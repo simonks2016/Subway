@@ -1,4 +1,4 @@
-module github.com/simonks2016/Subway
+module subway
 
 go 1.18
 

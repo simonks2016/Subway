@@ -1,8 +1,8 @@
-package Subway
+package subway
 
 import (
-	"Subway/Basic"
 	"github.com/gomodule/redigo/redis"
+	"subway/Basic"
 )
 
 type Subway struct {
