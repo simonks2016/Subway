@@ -190,7 +190,7 @@ func (this OperationLib) GetString(key string) (error, string) {
 		}()
 		ret, err := redis.String(Redis.Do("get", key))
 		if err != nil {
-			return errors.New("An error occurred! error message:" + err.Error()), ""
+			return err, ""
 		}
 		return nil, ret
 	}
@@ -227,10 +227,9 @@ func (this OperationLib) BatchGetStrings(key ...interface{}) (err error, ret []s
 				return
 			}
 		}()
-
 		ret, err = redis.Strings(Redis.Do("mget", key...))
 		if err != nil {
-			return fmt.Errorf("对不起客官,查阅Redis失败!错误信息:%s", err.Error()), nil
+			return err, nil
 		}
 		return nil, ret
 	}
@@ -263,7 +262,7 @@ func (c OperationLib) Expire(Key string, expireTime int64) error {
 		_ = Redis.Close()
 	}()
 
-	if _, err := Redis.Do("expire", Key); err != nil {
+	if _, err := Redis.Do("expire", Key, expireTime); err != nil {
 		return err
 	}
 	return nil
