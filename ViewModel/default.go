@@ -25,6 +25,7 @@ type ModelOperation[ViewModel any] interface {
 	Expire(int64) error
 	Read(id string) (*ViewModel, error)
 	BatchRead(...string) (error, []*ViewModel)
+	Exist(string) (bool, error)
 
 	ViewModelName() string
 	Set(string, any)
@@ -146,6 +147,12 @@ func (this BasicModelOperation[ViewModel]) Expire(expire int64) error {
 	}
 
 	return this.BasicOperationLib.Expire(this.dsa.DocId, expire)
+}
+
+func (this BasicModelOperation[ViewModel]) Exist(id string) (bool, error) {
+
+	var docId = Basic.NewDocumentId(this.ViewModelName(), id)
+	return this.BasicOperationLib.Exist(docId)
 }
 
 /*
