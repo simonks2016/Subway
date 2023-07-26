@@ -16,6 +16,7 @@ type Wheel interface {
 	ZRange(string, int64, int64, bool) (error, []string)
 	ZCard(string) (error, int64)
 	ZRangeBySore(string, int64, int64, int64, int64) (error, []string)
+	ZIsMember(string, string) (error, bool)
 
 	SetString(string, string) error
 	GetString(string) (error, string)

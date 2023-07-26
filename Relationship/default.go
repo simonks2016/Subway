@@ -15,6 +15,7 @@ type LineControllers interface {
 	Add(string, float64) error
 	Remove(...string) error
 	Get(int64, int64, bool) ([]string, error)
+	IsMember(string) (bool, error)
 }
 
 type AssociationController[ViewModel any] interface {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	"strings"
 )
 
 type OperationLib struct {
@@ -429,6 +430,40 @@ func (o OperationLib) ZRemove(SetName string, key ...interface{}) (err error, nu
 		}
 	}
 	return errors.New("failed to connect to redis"), 0
+}
+
+func (o OperationLib) ZIsMember(setName string, key string) (error, bool) {
+
+	var (
+		r redis.Conn
+	)
+
+	if o.Fuel != nil {
+		r = o.Fuel.Get()
+		if err := r.Err(); err != nil {
+			return err, false
+		} else {
+			defer func() {
+				_ = r.Close()
+			}()
+
+			var d []string
+			//查阅redis
+			d, err = redis.Strings(r.Do("ZRANK", setName))
+			if err != nil {
+				return err, false
+			}
+
+			for _, s := range d {
+				if strings.Compare(s, key) == 0 {
+					return nil, true
+				}
+			}
+			//返回
+			return nil, false
+		}
+	}
+	return errors.New("failed to connect to redis"), false
 }
 
 func (o OperationLib) NewDocumentId(topic, id string) string {

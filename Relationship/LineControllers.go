@@ -1,7 +1,6 @@
 package Relationship
 
 import (
-	"fmt"
 	"github.com/simonks2016/Subway/Basic"
 )
 
@@ -38,12 +37,20 @@ func (this BasicLineController) Remove(keys ...string) error {
 }
 func (this BasicLineController) Get(start, end int64, desc bool) ([]string, error) {
 
-	fmt.Println(this.SetName)
 	err, i := this.OL.ZRange(this.SetName, start, end, desc)
 	if err != nil {
 		return nil, err
 	}
 	return i, err
+}
+
+func (this BasicLineController) IsMember(key string) (bool, error) {
+
+	err, b := this.OL.ZIsMember(this.SetName, key)
+	if err != nil {
+		return false, err
+	}
+	return b, nil
 }
 
 func NewBasicLineControllers(SetName string, OL Basic.OperationLib) *BasicLineController {

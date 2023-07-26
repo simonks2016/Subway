@@ -13,10 +13,10 @@ import (
 type ModelOperation[ViewModel any] interface {
 	CreateRelationship(string) Relationship.Controllers
 	QueryRelationship(string) (Relationship.Controllers, error)
-	CreateLine(sortField string) Relationship.LineControllers
+	CreateLine(sortField string,specialKey ...string) Relationship.LineControllers
 
 	LoadRelationship(string) Relationship.Controllers
-	LoadLine(string) Relationship.LineControllers
+	LoadLine(string,...string) Relationship.LineControllers
 
 	GetDataId() string
 
@@ -67,8 +67,12 @@ func (this BasicModelOperation[ViewModel]) createCollectionKey(fieldName string)
 	return this.ViewModelName() + ":" + this.GetDataId() + "-" + fieldName
 }
 
-func (this BasicModelOperation[ViewModel]) createLineKey(fieldName string) string {
-	return this.ViewModelName() + "-line-by-" + fieldName
+func (this BasicModelOperation[ViewModel]) createLineKey(fieldName string, specialKey ...string) string {
+
+	if len(specialKey)<=0{
+		return this.ViewModelName() + "-line-by-" + fieldName
+	}
+	return this.ViewModelName() + ":"+strings.Join(specialKey,"&&") + "-line-by-" + fieldName
 }
 
 func (this BasicModelOperation[VideoModel]) CreateRelationship(fieldName string) Relationship.Controllers {
@@ -182,13 +186,13 @@ the line base on the redis sorted set.
 
 */
 
-func (this BasicModelOperation[ViewModel]) CreateLine(fieldName string) Relationship.LineControllers {
+func (this BasicModelOperation[ViewModel]) CreateLine(fieldName string,specialKey ...string) Relationship.LineControllers {
 
 	if err := this.IsValidFieldName(fieldName, reflect.Float64, reflect.Int64, reflect.Int, reflect.Float32, reflect.Int8, reflect.Int32, reflect.Int16); err != nil {
 		panic(err.Error())
 	}
 
-	var key = this.createLineKey(fieldName)
+	var key = this.createLineKey(fieldName,specialKey...)
 	this.dsa.AddLine(fieldName)
 
 	return Relationship.NewBasicLineControllers(key, this.BasicOperationLib)
@@ -217,7 +221,7 @@ func (this BasicModelOperation[ViewModel]) LoadRelationship(fieldName string) Re
 	return Relationship.NewBasicRelationshipControllers(key, this.BasicOperationLib)
 }
 
-func (this BasicModelOperation[ViewModel]) LoadLine(fieldName string) Relationship.LineControllers {
+func (this BasicModelOperation[ViewModel]) LoadLine(fieldName string,specialKey ...string) Relationship.LineControllers {
 
 	if err := this.IsValidFieldName(fieldName, reflect.Float64, reflect.Int64, reflect.Int, reflect.Float32, reflect.Int8, reflect.Int32, reflect.Int16); err != nil {
 		panic(err.Error())
@@ -228,7 +232,7 @@ func (this BasicModelOperation[ViewModel]) LoadLine(fieldName string) Relationsh
 			return this.CreateLine(fieldName)
 		}*/
 	//make key
-	var key = this.createLineKey(fieldName)
+	var key = this.createLineKey(fieldName,specialKey...)
 	//return
 	return Relationship.NewBasicLineControllers(key, this.BasicOperationLib)
 }
