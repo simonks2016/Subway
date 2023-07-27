@@ -449,7 +449,7 @@ func (o OperationLib) ZIsMember(setName string, key string) (error, bool) {
 
 			var d []string
 			//查阅redis
-			d, err = redis.Strings(r.Do("ZRANK", setName))
+			d, err = redis.Strings(r.Do("ZRANGE", setName, 0, -1))
 			if err != nil {
 				return err, false
 			}
