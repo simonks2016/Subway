@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	errors2 "github.com/simonks2016/Subway/errors"
 	"strings"
 )
 
@@ -45,7 +46,7 @@ func (this OperationLib) SAdd(SetName string, key ...interface{}) (err error) {
 		return err
 	}
 	if num == 0 {
-		return errors.New("add cache failed")
+		return errors2.ErrAddFailed
 	}
 	return nil
 }
@@ -173,7 +174,31 @@ func (this OperationLib) Exist(key string) (bool, error) {
 		}
 		return ret, err
 	}
-	return false, errors.New("unable to connect redis")
+	return false, errors2.ErrUnable2ConnectRedis
+
+}
+func (this OperationLib) GetByte(key string) (error, []byte) {
+
+	if this.Fuel != nil {
+		Redis := this.Fuel.Get()
+		if Redis.Err() != nil {
+			return Redis.Err(), nil
+		}
+		defer func() {
+			if err := Redis.Close(); err != nil {
+				return
+			}
+		}()
+		ret, err := redis.Bytes(Redis.Do("get", key))
+		if err != nil {
+			if errors.Is(err, redis.ErrNil) {
+				return errors2.ErrNil, nil
+			}
+			return err, nil
+		}
+		return nil, ret
+	}
+	return errors2.ErrUnable2ConnectRedis, nil
 
 }
 
@@ -191,11 +216,55 @@ func (this OperationLib) GetString(key string) (error, string) {
 		}()
 		ret, err := redis.String(Redis.Do("get", key))
 		if err != nil {
+			if errors.Is(err, redis.ErrNil) {
+				return errors2.ErrNil, ""
+			}
 			return err, ""
+		}
+		if ret == "nil" || ret == "null" {
+			return errors2.ErrNil, ""
 		}
 		return nil, ret
 	}
-	return errors.New("unable to connect to Redis"), ""
+	return errors2.ErrUnable2ConnectRedis, ""
+}
+
+func (this OperationLib) SetStringEx(key, value string, expireTime int64) error {
+	if this.Fuel != nil {
+		Redis := this.Fuel.Get()
+		if Redis.Err() != nil {
+			return Redis.Err()
+		}
+		defer func() {
+			if err := Redis.Close(); err != nil {
+				return
+			}
+		}()
+		if _, err := Redis.Do("SETEX", key, expireTime, value); err != nil {
+			return err
+		}
+		return nil
+	}
+	return errors2.ErrUnable2ConnectRedis
+}
+
+func (this OperationLib) SetStringNx(key, value string) error {
+	if this.Fuel != nil {
+		Redis := this.Fuel.Get()
+		if Redis.Err() != nil {
+			return Redis.Err()
+		}
+		defer func() {
+			if err := Redis.Close(); err != nil {
+				return
+			}
+		}()
+		if _, err := Redis.Do("SETNX", key, value); err != nil {
+			return err
+		}
+		return nil
+	}
+	return errors2.ErrUnable2ConnectRedis
 }
 
 func (this OperationLib) SetString(key string, value string) error {
@@ -210,11 +279,11 @@ func (this OperationLib) SetString(key string, value string) error {
 			}
 		}()
 		if _, err := Redis.Do("set", key, value); err != nil {
-			return fmt.Errorf("对不起客官,查阅Redis失败!错误信息:%s", err.Error())
+			return err
 		}
 		return nil
 	}
-	return fmt.Errorf("%s\n", "连接Redis数据库失败!")
+	return errors2.ErrUnable2ConnectRedis
 }
 func (this OperationLib) BatchGetStrings(key ...interface{}) (err error, ret []string) {
 
@@ -230,11 +299,14 @@ func (this OperationLib) BatchGetStrings(key ...interface{}) (err error, ret []s
 		}()
 		ret, err = redis.Strings(Redis.Do("mget", key...))
 		if err != nil {
+			if errors.Is(err, redis.ErrNil) {
+				return errors2.ErrNil, nil
+			}
 			return err, nil
 		}
 		return nil, ret
 	}
-	return fmt.Errorf("%s\n", "连接Redis数据库失败!"), nil
+	return errors2.ErrUnable2ConnectRedis, nil
 }
 
 func (c OperationLib) Delete(Key string) error {
@@ -251,6 +323,26 @@ func (c OperationLib) Delete(Key string) error {
 		return err
 	}
 	return nil
+}
+
+func (c OperationLib) BatchDelete(key ...interface{}) error {
+
+	if c.Fuel != nil {
+		Redis := c.Fuel.Get()
+		if Redis.Err() != nil {
+			return Redis.Err()
+		}
+		defer func() {
+			_ = Redis.Close()
+		}()
+		var args []interface{}
+		args = append(args, key)
+		if _, err := Redis.Do("del", args...); err != nil {
+			return err
+		}
+		return nil
+	}
+	return errors2.ErrUnable2ConnectRedis
 }
 
 func (c OperationLib) Expire(Key string, expireTime int64) error {
@@ -288,7 +380,7 @@ func (o OperationLib) ZRemoveAll(sets ...interface{}) (err error) {
 			return
 		}
 	}
-	return errors.New("failed to connect to redis")
+	return errors2.ErrUnable2ConnectRedis
 }
 
 func (o OperationLib) ZAdd(SetName string, Score float64, key ...interface{}) (err error) {
@@ -316,7 +408,7 @@ func (o OperationLib) ZAdd(SetName string, Score float64, key ...interface{}) (e
 		}
 		return nil
 	}
-	return errors.New("failed to connect to redis")
+	return errors2.ErrUnable2ConnectRedis
 }
 
 func (o OperationLib) ZRange(SetName string, Start, End int64, Desc bool) (err error, result []string) {
@@ -346,7 +438,7 @@ func (o OperationLib) ZRange(SetName string, Start, End int64, Desc bool) (err e
 			}
 		}
 	}
-	return errors.New("failed to connect to redis"), nil
+	return errors2.ErrUnable2ConnectRedis, nil
 }
 
 func (o OperationLib) ZCard(SetName string) (err error, total int64) {
@@ -369,7 +461,7 @@ func (o OperationLib) ZCard(SetName string) (err error, total int64) {
 			return
 		}
 	}
-	return errors.New("failed to connect to redis"), 0
+	return errors2.ErrUnable2ConnectRedis, 0
 }
 
 func (o OperationLib) ZRangeBySore(SetName string, min, max, offset, limit int64) (err error, result []string) {
@@ -398,7 +490,7 @@ func (o OperationLib) ZRangeBySore(SetName string, min, max, offset, limit int64
 			return
 		}
 	}
-	return errors.New("failed to connect to redis"), nil
+	return errors2.ErrUnable2ConnectRedis, nil
 }
 
 func (o OperationLib) ZRemove(SetName string, key ...interface{}) (err error, num int) {
@@ -429,7 +521,7 @@ func (o OperationLib) ZRemove(SetName string, key ...interface{}) (err error, nu
 			return
 		}
 	}
-	return errors.New("failed to connect to redis"), 0
+	return errors2.ErrUnable2ConnectRedis, 0
 }
 
 func (o OperationLib) ZIsMember(setName string, key string) (error, bool) {
@@ -463,7 +555,27 @@ func (o OperationLib) ZIsMember(setName string, key string) (error, bool) {
 			return nil, false
 		}
 	}
-	return errors.New("failed to connect to redis"), false
+	return errors2.ErrUnable2ConnectRedis, false
+}
+
+func (o OperationLib) Persist(key ...interface{}) error {
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if _, err = redisConn.Do("persist", key...); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	return errors2.ErrUnable2ConnectRedis
 }
 
 func (o OperationLib) NewDocumentId(topic, id string) string {
