@@ -4,44 +4,38 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gomodule/redigo/redis"
-	"github.com/simonks2016/Subway/Basic"
-	"github.com/simonks2016/Subway/Relationship"
+	"github.com/simonks2016/Subway/Core"
+	"github.com/simonks2016/Subway/DataAdapter"
+	errors2 "github.com/simonks2016/Subway/errors"
 	"reflect"
 	"strings"
 )
 
-type ModelOperation[ViewModel any] interface {
-	CreateRelationship(string) Relationship.Controllers
-	QueryRelationship(string) (Relationship.Controllers, error)
-	CreateLine(sortField string,specialKey ...string) Relationship.LineControllers
-
-	LoadRelationship(string) Relationship.Controllers
-	LoadLine(string,...string) Relationship.LineControllers
-
+type ModelOperation[ViewModel comparable] interface {
 	GetDataId() string
-
 	Update() error
 	Remove() error
 	Expire(int64) error
 	Read(id string) (*ViewModel, error)
 	BatchRead(...string) (error, []*ViewModel)
 	Exist(string) (bool, error)
-
+	Import([]byte) (*ViewModel, error)
+	Export() ([]byte, error)
 	ViewModelName() string
 	Set(string, any)
-
 	IsValidViewModel(any) bool
+	HasField(string) bool
 }
 
 type BasicModelOperation[ViewModel any] struct {
-	BasicOperationLib Basic.OperationLib
-	dsa               *Basic.DSA[ViewModel]
+	BasicOperationLib Core.OperationLib
+	dsa               *DataAdapter.DataAdapter[ViewModel]
 	vm                *ViewModel
 }
 
 func (this BasicModelOperation[ViewModel]) IsValidFieldName(fieldName string, targetKind ...reflect.Kind) error {
 
-	exist, FieldType := this.hasField(fieldName)
+	exist, FieldType := this.HasField(fieldName)
 	if exist == false {
 		return errors.New("the related field does not exist")
 	}
@@ -60,43 +54,6 @@ func (this BasicModelOperation[ViewModel]) IsValidFieldName(fieldName string, ta
 func (this BasicModelOperation[ViewModel]) IsValidViewModel(vm any) bool {
 
 	return reflect.TypeOf(vm).Kind() == reflect.Struct
-}
-
-func (this BasicModelOperation[ViewModel]) createCollectionKey(fieldName string) string {
-
-	return this.ViewModelName() + ":" + this.GetDataId() + "-" + fieldName
-}
-
-func (this BasicModelOperation[ViewModel]) createLineKey(fieldName string, specialKey ...string) string {
-
-	if len(specialKey)<=0{
-		return this.ViewModelName() + "-line-by-" + fieldName
-	}
-	return this.ViewModelName() + ":"+strings.Join(specialKey,"&&") + "-line-by-" + fieldName
-}
-
-func (this BasicModelOperation[VideoModel]) CreateRelationship(fieldName string) Relationship.Controllers {
-
-	err := this.IsValidFieldName(fieldName, reflect.String)
-	if err != nil {
-		panic(err.Error())
-	}
-	var key = this.createCollectionKey(fieldName)
-	//set key in fieldName
-	this.Set(fieldName, key)
-	//return
-	return Relationship.NewBasicRelationshipControllers(key, this.BasicOperationLib)
-}
-
-func (this BasicModelOperation[ViewModel]) QueryRelationship(fieldName string) (Relationship.Controllers, error) {
-
-	err := this.IsValidFieldName(fieldName, reflect.String)
-	if err != nil {
-		return nil, err
-	}
-	var key = this.createCollectionKey(fieldName)
-	//return
-	return Relationship.NewBasicRelationshipControllers(key, this.BasicOperationLib), nil
 }
 
 func (this BasicModelOperation[ViewModel]) GetValue(fieldName string) string {
@@ -125,7 +82,7 @@ func (this BasicModelOperation[ViewModel]) GetDataId() string {
 
 func (this BasicModelOperation[ViewModel]) Update() error {
 	//new doc ID
-	var docId = Basic.NewDocumentId(this.ViewModelName(), this.GetDataId())
+	var docId = Core.NewDocumentId(this.ViewModelName(), this.GetDataId())
 	//copy to dsa
 	this.dsa.DocId = docId
 	//marshal dsa
@@ -155,7 +112,7 @@ func (this BasicModelOperation[ViewModel]) Expire(expire int64) error {
 
 func (this BasicModelOperation[ViewModel]) Exist(id string) (bool, error) {
 
-	var docId = Basic.NewDocumentId(this.ViewModelName(), id)
+	var docId = Core.NewDocumentId(this.ViewModelName(), id)
 	return this.BasicOperationLib.Exist(docId)
 }
 
@@ -165,78 +122,22 @@ we need the data id ,then returning the view model and error
 */
 func (this BasicModelOperation[ViewModel]) Read(id string) (*ViewModel, error) {
 
-	var docId = Basic.NewDocumentId(this.ViewModelName(), id)
+	var docId = Core.NewDocumentId(this.ViewModelName(), id)
 
-	err, s := this.BasicOperationLib.GetString(docId)
+	err, s := this.BasicOperationLib.GetByte(docId)
 	if err != nil {
 		return nil, err
 	}
+	if !json.Valid(s) || len(s) <= 0 {
+		return nil, errors2.ErrNotJson
+	}
 
-	err = this.dsa.UnMarshal([]byte(s))
+	err = this.dsa.UnMarshal(s)
 	if err != nil {
 		return nil, err
 	}
-
-	return this.vm, nil
+	return this.dsa.Data, nil
 }
-
-/*
-this function is create the line from document
-the line base on the redis sorted set.
-
-*/
-
-func (this BasicModelOperation[ViewModel]) CreateLine(fieldName string,specialKey ...string) Relationship.LineControllers {
-
-	if err := this.IsValidFieldName(fieldName, reflect.Float64, reflect.Int64, reflect.Int, reflect.Float32, reflect.Int8, reflect.Int32, reflect.Int16); err != nil {
-		panic(err.Error())
-	}
-
-	var key = this.createLineKey(fieldName,specialKey...)
-	this.dsa.AddLine(fieldName)
-
-	return Relationship.NewBasicLineControllers(key, this.BasicOperationLib)
-}
-
-func (this BasicModelOperation[ViewModel]) LoadRelationship(fieldName string) Relationship.Controllers {
-
-	if err := this.IsValidFieldName(fieldName, reflect.String); err != nil {
-		panic(err.Error())
-	}
-	if this.dsa.HasRelationship(fieldName) == false {
-		return this.CreateRelationship(fieldName)
-	}
-
-	var key = this.GetValue(fieldName)
-	var key1 = this.createCollectionKey(fieldName)
-	if len(key) <= 0 {
-		key = key1
-		//set value in field
-		this.SetValue(fieldName, key1)
-	} else {
-		if strings.Compare(key1, key) != 0 {
-			panic("Collection keys are not as expected")
-		}
-	}
-	return Relationship.NewBasicRelationshipControllers(key, this.BasicOperationLib)
-}
-
-func (this BasicModelOperation[ViewModel]) LoadLine(fieldName string,specialKey ...string) Relationship.LineControllers {
-
-	if err := this.IsValidFieldName(fieldName, reflect.Float64, reflect.Int64, reflect.Int, reflect.Float32, reflect.Int8, reflect.Int32, reflect.Int16); err != nil {
-		panic(err.Error())
-	}
-
-	/*
-		if this.dsa.HasLine(fieldName) == false {
-			return this.CreateLine(fieldName)
-		}*/
-	//make key
-	var key = this.createLineKey(fieldName,specialKey...)
-	//return
-	return Relationship.NewBasicLineControllers(key, this.BasicOperationLib)
-}
-
 func (this BasicModelOperation[ViewModel]) ViewModelName() string {
 
 	var v ViewModel
@@ -248,16 +149,20 @@ func (this BasicModelOperation[ViewModel]) BatchRead(ids ...string) (error, []*V
 	var response []*ViewModel
 
 	for _, id := range ids {
-		args = append(args, Basic.NewDocumentId(this.ViewModelName(), id))
+		args = append(args, Core.NewDocumentId(this.ViewModelName(), id))
 	}
 	//batch get
 	if err, result := this.BasicOperationLib.BatchGetStrings(args...); err != nil {
 		return err, nil
 	} else {
 		for _, s := range result {
-			var v Basic.DSA[ViewModel]
+			if len(s) <= 0 || !json.Valid([]byte(s)) {
+				continue
+			}
+			var v1 ViewModel
+			var v = DataAdapter.NewDataAdapter[ViewModel]("", &v1)
 			//UnMarshal
-			err = json.Unmarshal([]byte(s), &v)
+			err = v.UnMarshal([]byte(s))
 			if err != nil {
 				return err, nil
 			}
@@ -280,7 +185,7 @@ func (b *BasicModelOperation[ViewModel]) SetValue(fieldName string, value any) {
 	}
 }
 
-func (this BasicModelOperation[ViewModel]) hasField(fieldName string) (bool, reflect.Kind) {
+func (this BasicModelOperation[ViewModel]) HasField(fieldName string) (bool, reflect.Kind) {
 
 	T := reflect.TypeOf(*this.vm)
 
@@ -296,12 +201,25 @@ func (this BasicModelOperation[ViewModel]) Set(fieldName string, value any) {
 	this.SetValue(fieldName, value)
 }
 
+func (this BasicModelOperation[ViewModel]) Import(data []byte) (*ViewModel, error) {
+
+	err := this.dsa.UnMarshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return this.dsa.Data, nil
+}
+
+func (this BasicModelOperation[ViewModel]) Export() ([]byte, error) {
+	return this.dsa.Marshal()
+}
+
 func NewBasicModelOperation[ViewModel any](redis *redis.Pool, vm *ViewModel) BasicModelOperation[ViewModel] {
 	return BasicModelOperation[ViewModel]{
-		BasicOperationLib: Basic.OperationLib{
+		BasicOperationLib: Core.OperationLib{
 			Fuel: redis,
 		},
 		vm:  vm,
-		dsa: Basic.NewDSA[ViewModel]("", vm, nil),
+		dsa: DataAdapter.NewDataAdapter[ViewModel]("", vm),
 	}
 }

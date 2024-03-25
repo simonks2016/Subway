@@ -2,26 +2,21 @@ package subway
 
 import (
 	"github.com/gomodule/redigo/redis"
-	"github.com/simonks2016/Subway/ViewModel"
 	"strings"
 	"time"
 )
 
-type Subway struct {
-	redis *redis.Pool
-
-	d map[string]ViewModel.ModelOperation[any]
+type _subwayConnection struct {
+	pool *redis.Pool
 }
 
-func NewSubway(redisPool *redis.Pool) *Subway {
+var Subway *_subwayConnection = nil
 
-	return &Subway{redis: redisPool}
-}
-
-func NewRedisConnWithSubway(address, userName, password string) *redis.Pool {
+func NewRedisConnWithSubway(address, userName, password string) *_subwayConnection {
 
 	redisAuth := userName + ":" + password
-	return &redis.Pool{
+
+	pool := &redis.Pool{
 		Dial: func() (redisConn redis.Conn, err error) {
 			redisConn, err = redis.Dial("tcp", address)
 			if err != nil {
@@ -47,4 +42,8 @@ func NewRedisConnWithSubway(address, userName, password string) *redis.Pool {
 		MaxActive:   0,
 		IdleTimeout: time.Minute,
 	}
+
+	Subway = &_subwayConnection{pool: pool}
+	//return Subway
+	return Subway
 }

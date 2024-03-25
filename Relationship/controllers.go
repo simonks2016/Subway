@@ -2,13 +2,13 @@ package Relationship
 
 import (
 	"errors"
-	"github.com/simonks2016/Subway/Basic"
+	"github.com/simonks2016/Subway/Core"
 )
 
 type BasicRelationshipControllers struct {
 	SetName string
 	Controllers
-	OperationLib Basic.OperationLib
+	OperationLib Core.OperationLib
 }
 
 func (this BasicRelationshipControllers) GetCount() (int, error) {
@@ -59,7 +59,7 @@ func (this BasicRelationshipControllers) Members() ([]string, error) {
 	return this.OperationLib.SMembers(this.SetName)
 }
 
-func NewBasicRelationshipControllers(SetName string, OL Basic.OperationLib) BasicRelationshipControllers {
+func NewBasicRelationshipControllers(SetName string, OL Core.OperationLib) BasicRelationshipControllers {
 
 	return BasicRelationshipControllers{
 		OperationLib: OL,

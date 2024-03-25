@@ -1,12 +1,12 @@
 package Relationship
 
 import (
-	"github.com/simonks2016/Subway/Basic"
+	"github.com/simonks2016/Subway/Core"
 )
 
 type BasicLineController struct {
 	LineControllers
-	OL      Basic.OperationLib
+	OL      Core.OperationLib
 	SetName string
 }
 
@@ -53,7 +53,7 @@ func (this BasicLineController) IsMember(key string) (bool, error) {
 	return b, nil
 }
 
-func NewBasicLineControllers(SetName string, OL Basic.OperationLib) *BasicLineController {
+func NewBasicLineControllers(SetName string, OL Core.OperationLib) *BasicLineController {
 
 	return &BasicLineController{SetName: SetName, OL: OL}
 }

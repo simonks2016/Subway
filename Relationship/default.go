@@ -8,6 +8,7 @@ type Controllers interface {
 	RandMembers(int) ([]string, error)
 	Remove(...string) error
 	Members() ([]string, error)
+	DeleteAll() error
 }
 
 type LineControllers interface {
@@ -16,8 +17,5 @@ type LineControllers interface {
 	Remove(...string) error
 	Get(int64, int64, bool) ([]string, error)
 	IsMember(string) (bool, error)
-}
-
-type AssociationController[ViewModel any] interface {
-	Query() (*ViewModel, error)
+	DeleteAll() error
 }

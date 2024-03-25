@@ -1,7 +1,11 @@
-package Basic
+package DataAdapter
 
 import (
 	"encoding/json"
+	"github.com/mailru/easyjson"
+	"github.com/simonks2016/Subway/Core"
+	"github.com/simonks2016/Subway/define"
+	errors2 "github.com/simonks2016/Subway/errors"
 	"reflect"
 	"regexp"
 	"strings"
@@ -10,34 +14,42 @@ import (
 
 const callOutputFunc = "Output"
 const callRebuildFunc = "Rebuild"
+const callUpgradeFunc = "Upgrade"
+const callSetRedis = "SetRedisConn"
 
-type DSA[ViewModel any] struct {
-	DocId        string                         `json:"doc_id"`
-	Data         *ViewModel                     `json:"-"`
-	CreateTime   int64                          `json:"create_time"`
-	Refs         map[string]string              `json:"refs"`
-	ManyRefs     map[string]string              `json:"many_refs"`
-	Fields       map[string]any                 `json:"fields"`
-	FilterFields map[string]* `json:"filter_fields"`
-	SortFields   map[string]*sortFieldSetting   `json:"sort_fields"`
+type FilterCallback func(key string, field any) error
+type SortCallback func(key, fieldName string, value float64) error
+
+type DataAdapter[ViewModel any] struct {
+	DocId          string     `json:"doc_id"`
+	Data           *ViewModel `json:"-"`
+	CreateTime     int64      `json:"create_time"`
+	ref            map[string]string
+	manyRefs       map[string]string
+	fields         map[string]any
+	filterFields   map[string]*define.FilterFieldSetting
+	sortFields     map[string]*define.SortFieldSetting
+	CallbackFilter FilterCallback
+	CallbackSort   SortCallback
+	OperationLib   *Core.OperationLib
 }
 
-func NewDSA[ViewModel any](docId string, data *ViewModel) *DSA[ViewModel] {
+func NewDataAdapter[ViewModel any](docId string, data *ViewModel) *DataAdapter[ViewModel] {
 
-	return &DSA[ViewModel]{
+	return &DataAdapter[ViewModel]{
 		DocId:      docId,
 		Data:       data,
 		CreateTime: time.Now().Unix(),
 	}
 }
 
-func (this *DSA[ViewModel]) Analyze(viewModel *ViewModel) {
+func (this *DataAdapter[ViewModel]) Analyze(viewModel *ViewModel) {
 
 	var t = reflect.TypeOf(*viewModel)
 	var v = reflect.ValueOf(*viewModel)
 
-	if this.Fields == nil {
-		this.Fields = make(map[string]any)
+	if this.fields == nil {
+		this.fields = make(map[string]any)
 	}
 
 	//Determine whether it is a dynamic field
@@ -61,34 +73,34 @@ func (this *DSA[ViewModel]) Analyze(viewModel *ViewModel) {
 	for i := 0; i < t.NumField(); i++ {
 		//Determine whether it is a dynamic field
 		if DetermineDynamicFields(t.Field(i).Type) == true {
-			this.AnalyzeDynamicFields(t.Field(i).Name, v.Field(i), t.Field(i).Type)
+			this.AnalyzeDynamicFields(t.Field(i).Name, v.Field(i))
 		} else {
 			//if exist fields
-			if _, exist := this.Fields[t.Field(i).Name]; !exist {
+			if _, exist := this.fields[t.Field(i).Name]; !exist {
 				//
 				fieldName := t.Field(i).Name
 				fieldValue := v.Field(i).Interface()
-				this.Fields[fieldName] = fieldValue
+				this.fields[fieldName] = fieldValue
 			}
 		}
 	}
 	return
 }
 
-func (this *DSA[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue reflect.Value, FieldType reflect.Type) {
+func (this *DataAdapter[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue reflect.Value) {
 
-	if this.Refs == nil {
-		this.Refs = make(map[string]string)
+	if this.ref == nil {
+		this.ref = make(map[string]string)
 	}
-	if this.ManyRefs == nil {
-		this.ManyRefs = make(map[string]string)
+	if this.manyRefs == nil {
+		this.manyRefs = make(map[string]string)
 	}
-	if this.FilterFields == nil {
-		this.FilterFields = make(map[string]*filterFieldSetting)
+	if this.filterFields == nil {
+		this.filterFields = make(map[string]*define.FilterFieldSetting)
 	}
 
-	if this.SortFields == nil {
-		this.SortFields = make(map[string]*sortFieldSetting)
+	if this.sortFields == nil {
+		this.sortFields = make(map[string]*define.SortFieldSetting)
 	}
 
 	var fieldValTypeName string
@@ -110,8 +122,8 @@ func (this *DSA[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue re
 				//
 				for _, value := range values {
 					//
-					if _, exist := this.Refs[FieldName]; !exist {
-						this.Refs[FieldName] = value.String()
+					if _, exist := this.ref[FieldName]; !exist {
+						this.ref[FieldName] = value.String()
 					}
 				}
 			}
@@ -123,9 +135,9 @@ func (this *DSA[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue re
 				values := FieldValue.MethodByName(callOutputFunc).Call([]reflect.Value{})
 				//
 				for _, value := range values {
-					if _, exist := this.Refs[FieldName]; !exist {
+					if _, exist := this.ref[FieldName]; !exist {
 
-						this.ManyRefs[FieldName] = value.String()
+						this.manyRefs[FieldName] = value.String()
 
 					}
 				}
@@ -142,13 +154,21 @@ func (this *DSA[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue re
 					v1 := values[0]
 					v2 := values[1]
 					//
-					this.FilterFields[FieldName] = &filterFieldSetting{
+					this.filterFields[FieldName] = &define.FilterFieldSetting{
 						FieldName: FieldName,
 						Value:     v2.Interface(),
 						KeyName:   v1.String(),
 					}
+					//callback
+					if this.CallbackFilter != nil {
+						err := this.CallbackFilter(v1.String(), v2.Interface())
+						if err != nil {
+							panic(err)
+						}
+					}
 				}
 			}
+
 		}
 	case checkIsSortField(fieldValTypeName):
 		if FieldValue.IsZero() == false {
@@ -159,10 +179,16 @@ func (this *DSA[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue re
 				if len(values) == 2 {
 					v1 := values[0]
 					v2 := values[1]
-					this.SortFields[FieldName] = &sortFieldSetting{
+					this.sortFields[FieldName] = &define.SortFieldSetting{
 						FieldName: FieldName,
 						Value:     v2.Float(),
 						KeyName:   v1.String(),
+					}
+					if this.CallbackSort != nil {
+						err := this.CallbackSort(v1.String(), FieldName, v2.Float())
+						if err != nil {
+							panic(err)
+						}
 					}
 				}
 			}
@@ -171,28 +197,32 @@ func (this *DSA[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue re
 	return
 }
 
-func (this *DSA[ViewModel]) Marshal() ([]byte, error) {
+func (this *DataAdapter[ViewModel]) Marshal() ([]byte, error) {
 
 	this.Analyze(this.Data)
 
-	var a = agreement{
+	var a = define.DataAgreement{
 		DocId:       this.DocId,
 		CreateTime:  time.Now().Unix(),
-		Refs:        this.Refs,
-		ManyRefs:    this.ManyRefs,
-		FilterField: this.FilterFields,
-		SortFields:  this.SortFields,
-		Fields:      this.Fields,
+		Refs:        this.ref,
+		ManyRefs:    this.manyRefs,
+		FilterField: this.filterFields,
+		SortFields:  this.sortFields,
+		Fields:      this.fields,
 	}
 
-	return json.Marshal(&a)
+	return easyjson.Marshal(&a)
 
 }
 
-func (this *DSA[ViewModel]) UnMarshal(dataByte []byte) error {
+func (this *DataAdapter[ViewModel]) UnMarshal(dataByte []byte) error {
 
-	var a agreement
-	err := json.Unmarshal(dataByte, &a)
+	var a define.DataAgreement
+
+	if !json.Valid(dataByte) {
+		return errors2.ErrNotJson
+	}
+	err := easyjson.Unmarshal(dataByte, &a)
 	if err != nil {
 		return err
 	}
@@ -230,7 +260,7 @@ func (this *DSA[ViewModel]) UnMarshal(dataByte []byte) error {
 	return nil
 }
 
-func (this *DSA[ViewModel]) rebuildDynamicFields(typeName string, fieldName string, currentField reflect.Value, agree *agreement) {
+func (this *DataAdapter[ViewModel]) rebuildDynamicFields(typeName string, fieldName string, currentField reflect.Value, agree *define.DataAgreement) {
 
 	switch true {
 	case checkIsRef(typeName):
@@ -240,6 +270,7 @@ func (this *DSA[ViewModel]) rebuildDynamicFields(typeName string, fieldName stri
 				//gen the value list
 				var values = []reflect.Value{
 					reflect.ValueOf(val),
+					reflect.ValueOf(this.OperationLib),
 				}
 				//call the function
 				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)
@@ -256,6 +287,7 @@ func (this *DSA[ViewModel]) rebuildDynamicFields(typeName string, fieldName stri
 				//gen the value list
 				var values = []reflect.Value{
 					reflect.ValueOf(val),
+					reflect.ValueOf(this.OperationLib),
 				}
 				//call the function
 				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)
@@ -275,7 +307,10 @@ func (this *DSA[ViewModel]) rebuildDynamicFields(typeName string, fieldName stri
 				//gen the value list
 				var values = []reflect.Value{
 					reflect.ValueOf(val.KeyName),
+					reflect.ValueOf(val.FieldName),
+					reflect.ValueOf(agree.DocId),
 					reflect.ValueOf(val.Value),
+					reflect.ValueOf(this.OperationLib),
 				}
 				//call the function
 				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)
@@ -291,10 +326,12 @@ func (this *DSA[ViewModel]) rebuildDynamicFields(typeName string, fieldName stri
 		if currentField.MethodByName(callRebuildFunc).IsNil() == false {
 			//get the key name from the agreement
 			if val, exist := agree.FilterField[fieldName]; exist {
+
 				//gen the value list
 				var values = []reflect.Value{
 					reflect.ValueOf(val.KeyName),
 					reflect.ValueOf(val.Value),
+					reflect.ValueOf(this.OperationLib),
 				}
 				//call the function
 				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)

@@ -1,9 +1,10 @@
-package Basic
+package Core
 
 import (
 	"errors"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	//"github.com/simonks2016/Subway/DataAdapter"
 	errors2 "github.com/simonks2016/Subway/errors"
 	"strings"
 )
@@ -189,6 +190,13 @@ func (this OperationLib) GetByte(key string) (error, []byte) {
 				return
 			}
 		}()
+		exists, err := redis.Bool(Redis.Do("exists", key))
+		if err != nil {
+			return err, nil
+		}
+		if !exists {
+			return errors2.ErrNil, nil
+		}
 		ret, err := redis.Bytes(Redis.Do("get", key))
 		if err != nil {
 			if errors.Is(err, redis.ErrNil) {
@@ -303,6 +311,10 @@ func (this OperationLib) BatchGetStrings(key ...interface{}) (err error, ret []s
 				return errors2.ErrNil, nil
 			}
 			return err, nil
+		}
+
+		if len(ret) <= 0 {
+			return errors2.ErrNil, nil
 		}
 		return nil, ret
 	}
@@ -576,6 +588,138 @@ func (o OperationLib) Persist(key ...interface{}) error {
 		}
 	}
 	return errors2.ErrUnable2ConnectRedis
+}
+
+func (o OperationLib) SetHashMap(key interface{}, field interface{}, value interface{}) error {
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if _, err = redisConn.Do("HSET", key, field, value); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	return errors2.ErrUnable2ConnectRedis
+
+}
+func (o OperationLib) GetHashMap(key, field interface{}) (any, error) {
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return nil, err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if result, err := redisConn.Do("HGET", key, field); err != nil {
+				if errors.Is(err, redis.ErrNil) {
+					return nil, errors2.ErrNil
+				}
+				return nil, err
+			} else {
+				return result, nil
+			}
+		}
+	}
+	return nil, errors2.ErrUnable2ConnectRedis
+}
+
+func (o OperationLib) GetALLHashMap(key interface{}) ([]any, error) {
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return nil, err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if result, err := redis.Values(redisConn.Do("HGETALL", key)); err != nil {
+				return nil, err
+			} else {
+				return result, nil
+			}
+		}
+	}
+	return nil, errors2.ErrUnable2ConnectRedis
+
+}
+func (o OperationLib) MSetHashMap(key interface{}, data map[any]any) error {
+
+	var args []interface{}
+
+	args = append(args, key)
+
+	for field, value := range data {
+		args = append(args, field, value)
+	}
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if _, err = redisConn.Do("HSET", args...); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	return errors2.ErrUnable2ConnectRedis
+
+}
+func (o OperationLib) DelHashMap(key, field interface{}) error {
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if _, err = redisConn.Do("HDEL", key, field); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	return errors2.ErrUnable2ConnectRedis
+}
+func (o OperationLib) GetFieldsHashMap(key interface{}) ([]any, error) {
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return nil, err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if result, err := redis.Values(redisConn.Do("HKEYS", key)); err != nil {
+				return nil, err
+			} else {
+				return result, nil
+			}
+		}
+	}
+	return nil, errors2.ErrUnable2ConnectRedis
 }
 
 func (o OperationLib) NewDocumentId(topic, id string) string {
