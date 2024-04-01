@@ -1,6 +1,9 @@
 package Core
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 type Wheel interface {
 	SAdd(string, ...interface{}) error
@@ -49,4 +52,14 @@ func NewDocumentId(ViewModelName string, dataId string) string {
 
 func (this DocumentId) ToString() string {
 	return string(this)
+}
+
+func GetViewModelName(vm any) string {
+	var k = reflect.TypeOf(vm)
+	//if
+	if reflect.TypeOf(vm).Kind() != reflect.Ptr {
+		return k.Name()
+	} else {
+		return k.Elem().Name()
+	}
 }

@@ -17,8 +17,8 @@ type ReferencesInterface[dataModel any] interface {
 
 type Ref[dataModel any] struct {
 	keyName   string
-	dataModel *dataModel
-	lib       *Core.OperationLib
+	dataModel    *dataModel
+	operationLib *Core.OperationLib
 	//ReferencesInterface[dataModel]
 }
 
@@ -27,10 +27,10 @@ func (m *Ref[dataModel]) Query() (*dataModel, error) {
 	if len(m.keyName) <= 0 {
 		return nil, errors2.ErrMissingTheKeyName
 	}
-	if m.lib == nil || m.lib.Fuel == nil {
+	if m.operationLib == nil || m.operationLib.Fuel == nil {
 		return nil, errors2.ErrNotSetSubway
 	}
-	err, s := m.lib.GetByte(m.keyName)
+	err, s := m.operationLib.GetByte(m.keyName)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +56,8 @@ func (m *Ref[dataModel]) Output() string {
 func (m *Ref[dataModel]) Rebuild(keyName string, ol *Core.OperationLib) *Ref[dataModel] {
 
 	m = &Ref[dataModel]{
-		keyName: keyName,
-		lib:     ol,
+		keyName:      keyName,
+		operationLib: ol,
 	}
 
 	return m

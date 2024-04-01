@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/simonks2016/Subway/Core"
 	errors2 "github.com/simonks2016/Subway/errors"
+	"reflect"
 	"strings"
 )
 
@@ -42,7 +43,10 @@ func (this *FilterField[fieldType]) GetSameConditions(Conditions fieldType, Comp
 	}
 	return data
 }
-func (this *FilterField[fieldType]) Get() fieldType { return this.keyValue }
+func (this *FilterField[fieldType]) Get() fieldType {
+
+	return this.keyValue
+}
 func (this *FilterField[fieldType]) Set(value fieldType, docIds ...string) error {
 
 	//If the existing map does not exist, request redis
@@ -147,14 +151,19 @@ func (this *FilterField[fieldType]) Output() (string, fieldType) {
 
 func (this *FilterField[fieldType]) Rebuild(keyName string, value any, ol *Core.OperationLib) *FilterField[fieldType] {
 
-	v1 := Convert[fieldType](value)
+	if value != nil && !reflect.ValueOf(value).IsZero() {
+		v1 := Convert[fieldType](value)
+		return &FilterField[fieldType]{
+			keyName:      keyName,
+			keyValue:     v1.(fieldType),
+			operationLib: ol,
+		}
+	}
 
 	return &FilterField[fieldType]{
 		keyName:      keyName,
-		keyValue:     v1.(fieldType),
 		operationLib: ol,
 	}
-
 }
 
 func NewFilter[fieldType FieldType](dataModelName string, fieldName string, fieldVale fieldType, DataIds ...string) *FilterField[fieldType] {

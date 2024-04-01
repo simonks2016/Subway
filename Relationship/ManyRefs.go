@@ -21,9 +21,9 @@ type ManyReferencesInterface[dataModel any] interface {
 }
 
 type ManyRefs[dataModel any] struct {
-	dataModel []dataModel
-	keyName   string
-	lib       *Core.OperationLib
+	dataModel    []dataModel
+	keyName      string
+	operationLib *Core.OperationLib
 	//ManyReferencesInterface[dataModel]
 }
 
@@ -33,12 +33,12 @@ func (this *ManyRefs[dataModel]) Query() ([]*dataModel, error) {
 		return nil, errors.ErrMissingTheKeyName
 	}
 
-	if this.lib == nil || this.lib.Fuel == nil {
+	if this.operationLib == nil || this.operationLib.Fuel == nil {
 		return nil, errors.ErrNotSetSubway
 	}
 	var response []*dataModel
 
-	members, err := this.lib.SMembers(this.keyName)
+	members, err := this.operationLib.SMembers(this.keyName)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (this *ManyRefs[dataModel]) Query() ([]*dataModel, error) {
 		//new document id
 		docId := Core.NewDocumentId(pTypeName, member)
 		//get data
-		err, i2 := this.lib.GetByte(docId)
+		err, i2 := this.operationLib.GetByte(docId)
 		if err != nil {
 			if !errors2.Is(err, errors.ErrNil) {
 				return nil, err
@@ -85,10 +85,10 @@ func (this *ManyRefs[dataModel]) Remove(dataId ...interface{}) error {
 		return errors.ErrMissingTheKeyName
 	}
 
-	if this.lib == nil || this.lib.Fuel == nil {
+	if this.operationLib == nil || this.operationLib.Fuel == nil {
 		return errors.ErrNotSetSubway
 	}
-	return this.lib.SRemove(this.keyName, dataId...)
+	return this.operationLib.SRemove(this.keyName, dataId...)
 }
 
 func (this *ManyRefs[dataModel]) GetCount() (int, error) {
@@ -97,11 +97,11 @@ func (this *ManyRefs[dataModel]) GetCount() (int, error) {
 		return 0, errors.ErrMissingTheKeyName
 	}
 
-	if this.lib == nil || this.lib.Fuel == nil {
+	if this.operationLib == nil || this.operationLib.Fuel == nil {
 		return 0, errors.ErrNotSetSubway
 	}
 
-	return this.lib.SCard(this.keyName)
+	return this.operationLib.SCard(this.keyName)
 }
 
 func (this *ManyRefs[dataModel]) Has(dataId string) (bool, error) {
@@ -109,10 +109,10 @@ func (this *ManyRefs[dataModel]) Has(dataId string) (bool, error) {
 		return false, errors.ErrMissingTheKeyName
 	}
 
-	if this.lib == nil || this.lib.Fuel == nil {
+	if this.operationLib == nil || this.operationLib.Fuel == nil {
 		return false, errors.ErrNotSetSubway
 	}
-	return this.lib.SIsMember(this.keyName, dataId)
+	return this.operationLib.SIsMember(this.keyName, dataId)
 }
 
 func (this *ManyRefs[dataModel]) Add(dataIds ...string) error {
@@ -120,7 +120,7 @@ func (this *ManyRefs[dataModel]) Add(dataIds ...string) error {
 		return errors.ErrMissingTheKeyName
 	}
 
-	if this.lib == nil || this.lib.Fuel == nil {
+	if this.operationLib == nil || this.operationLib.Fuel == nil {
 		return errors.ErrNotSetSubway
 	}
 
@@ -129,15 +129,20 @@ func (this *ManyRefs[dataModel]) Add(dataIds ...string) error {
 	for _, id := range dataIds {
 		args = append(args, id)
 	}
-	return this.lib.SAdd(this.keyName, args...)
+	return this.operationLib.SAdd(this.keyName, args...)
 }
 
 func (this *ManyRefs[dataModel]) Output() string {
-	return "输出key ID"
+
+	if len(this.keyName) <= 0 {
+		panic("You didn't set many refs")
+	}
+	return this.keyName
 }
 func (this *ManyRefs[dataModel]) Rebuild(keyName string, ol *Core.OperationLib) *ManyRefs[dataModel] {
 	return &ManyRefs[dataModel]{
-		keyName: keyName,
+		keyName:      keyName,
+		operationLib: ol,
 	}
 }
 
@@ -146,10 +151,10 @@ func (this *ManyRefs[dataModel]) HasAndCall(d1 []string, call func(string2 strin
 		return errors.ErrMissingTheKeyName
 	}
 
-	if this.lib == nil || this.lib.Fuel == nil {
+	if this.operationLib == nil || this.operationLib.Fuel == nil {
 		return errors.ErrNotSetSubway
 	}
-	members, err := this.lib.SMembers(this.keyName)
+	members, err := this.operationLib.SMembers(this.keyName)
 	if err != nil {
 		return err
 	}
@@ -166,13 +171,13 @@ func (this *ManyRefs[dataModel]) HasAndCall(d1 []string, call func(string2 strin
 	return nil
 }
 
-func NewManyRefs[dataModel any](ViewModelId string) *ManyRefs[dataModel] {
+func NewManyRefs[dataModel any](CurrentDataId string, fieldName string) *ManyRefs[dataModel] {
 	var d dataModel
 	return &ManyRefs[dataModel]{
-		keyName: NewKeyId(reflect.TypeOf(d).Name(), ViewModelId),
+		keyName: NewKeyId(Core.GetViewModelName(d), CurrentDataId, fieldName),
 	}
 }
 
-func NewKeyId(ViewModelName, ViewModelId string) string {
-	return fmt.Sprintf("Many-Refs-%s-%s", ViewModelName, ViewModelId)
+func NewKeyId(ViewModelName, ViewModelId, FieldName string) string {
+	return fmt.Sprintf("Many-Refs-%s-%s-%s", ViewModelName, ViewModelId, FieldName)
 }

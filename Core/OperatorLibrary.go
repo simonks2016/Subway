@@ -293,6 +293,26 @@ func (this OperationLib) SetString(key string, value string) error {
 	}
 	return errors2.ErrUnable2ConnectRedis
 }
+
+func (this OperationLib) Set(key string, value []byte) error {
+	if this.Fuel != nil {
+		Redis := this.Fuel.Get()
+		if Redis.Err() != nil {
+			return Redis.Err()
+		}
+		defer func() {
+			if err := Redis.Close(); err != nil {
+				return
+			}
+		}()
+		if _, err := Redis.Do("set", key, value); err != nil {
+			return err
+		}
+		return nil
+	}
+	return errors2.ErrUnable2ConnectRedis
+}
+
 func (this OperationLib) BatchGetStrings(key ...interface{}) (err error, ret []string) {
 
 	if this.Fuel != nil {
@@ -348,7 +368,8 @@ func (c OperationLib) BatchDelete(key ...interface{}) error {
 			_ = Redis.Close()
 		}()
 		var args []interface{}
-		args = append(args, key)
+		//append to key ele
+		args = append(args, key...)
 		if _, err := Redis.Do("del", args...); err != nil {
 			return err
 		}
@@ -655,6 +676,7 @@ func (o OperationLib) GetALLHashMap(key interface{}) ([]any, error) {
 	return nil, errors2.ErrUnable2ConnectRedis
 
 }
+
 func (o OperationLib) MSetHashMap(key interface{}, data map[any]any) error {
 
 	var args []interface{}
@@ -674,15 +696,43 @@ func (o OperationLib) MSetHashMap(key interface{}, data map[any]any) error {
 				_ = redisConn.Close()
 			}()
 			//do command
-			if _, err = redisConn.Do("HSET", args...); err != nil {
+			if _, err = redisConn.Do("HMSET", args...); err != nil {
 				return err
 			}
 			return nil
 		}
 	}
 	return errors2.ErrUnable2ConnectRedis
+}
+
+func (o OperationLib) MGetHashMap(key string, fields ...interface{}) ([]any, error) {
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return nil, err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//args
+			var args []interface{}
+			//set the args
+			args = append(args, key)
+			args = append(args, fields...)
+
+			//do command
+			if result, err := redis.Values(redisConn.Do("HMGET", args...)); err != nil {
+				return nil, err
+			} else {
+				return result, nil
+			}
+		}
+	}
+	return nil, errors2.ErrUnable2ConnectRedis
 
 }
+
 func (o OperationLib) DelHashMap(key, field interface{}) error {
 
 	if o.Fuel != nil {
@@ -720,6 +770,27 @@ func (o OperationLib) GetFieldsHashMap(key interface{}) ([]any, error) {
 		}
 	}
 	return nil, errors2.ErrUnable2ConnectRedis
+}
+
+func (o OperationLib) ExistsHashMap(key interface{}, field interface{}) (bool, error) {
+
+	if o.Fuel != nil {
+		redisConn := o.Fuel.Get()
+		if err := redisConn.Err(); err != nil {
+			return false, err
+		} else {
+			defer func() {
+				_ = redisConn.Close()
+			}()
+			//do command
+			if result, err := redis.Bool(redisConn.Do("HEXISTS", key, field)); err != nil {
+				return false, err
+			} else {
+				return result, nil
+			}
+		}
+	}
+	return false, errors2.ErrUnable2ConnectRedis
 }
 
 func (o OperationLib) NewDocumentId(topic, id string) string {

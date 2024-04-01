@@ -102,6 +102,8 @@ func List[vm any, CType Filter.FieldType](request *QueryRequest[CType], offset, 
 	for _, s := range i {
 		var v1 vm
 		var da = DataAdapter.NewDataAdapter[vm]("", &v1)
+		//
+		da.OperationLib = ol
 		//unmarshal
 		err = da.UnMarshal([]byte(s))
 		if err != nil {

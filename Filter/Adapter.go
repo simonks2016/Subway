@@ -10,6 +10,9 @@ func Convert[FType FieldType](input any) any {
 
 	var a1 FType
 
+	if input == nil {
+		return 0
+	}
 	var t1, t2 = reflect.TypeOf(a1), reflect.TypeOf(input)
 
 	if t1.Kind() != t2.Kind() {

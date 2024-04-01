@@ -26,7 +26,7 @@ func Update[VM any](data VM, docId string) error {
 
 	var da = DataAdapter.NewDataAdapter[VM](docId, &data)
 
-	da.CallbackSort = func(key, fieldName string, value float64) error {
+	da.CallbackDiscoverySortField = func(key, fieldName string, value float64) error {
 		//set hash map
 		err := ol.SetHashMap(key, docId, value)
 		if err != nil {
@@ -34,7 +34,7 @@ func Update[VM any](data VM, docId string) error {
 		}
 		return nil
 	}
-	da.CallbackFilter = func(key string, field any) error {
+	da.CallbackDiscoveryFilterField = func(key string, field any) error {
 
 		var d1 = []string{docId}
 

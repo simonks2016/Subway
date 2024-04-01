@@ -20,17 +20,17 @@ type SortFieldsInterface interface {
 }
 
 type SortField struct {
-	keyName   string
-	fieldName string
-	docId     string
-	value     float64
-	_         SortFieldsInterface
-	ol        *Core.OperationLib
+	keyName      string
+	fieldName    string
+	docId        string
+	value        float64
+	_            SortFieldsInterface
+	operationLib *Core.OperationLib
 }
 
 func (this *SortField) Remove() error {
 
-	err := this.ol.DelHashMap(this.keyName, this.docId)
+	err := this.operationLib.DelHashMap(this.keyName, this.docId)
 	if err != nil {
 		return err
 	}
@@ -39,10 +39,10 @@ func (this *SortField) Remove() error {
 
 func (this *SortField) Set(value float64) error {
 
-	if this.ol == nil {
+	if this.operationLib == nil {
 		return errors2.ErrNotSetSubway
 	}
-	err := this.ol.SetHashMap(this.keyName, this.docId, value)
+	err := this.operationLib.SetHashMap(this.keyName, this.docId, value)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (this *SortField) Set(value float64) error {
 }
 func (this *SortField) getAllData() (map[string]float64, error) {
 
-	data, err := this.ol.GetALLHashMap(this.keyName)
+	data, err := this.operationLib.GetALLHashMap(this.keyName)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,10 @@ func (this *SortField) Sort(IsAscendingOrder bool, filterGreaterThan float64) []
 	return response
 
 }
-func (this *SortField) GetValue() float64 { return this.value }
+func (this *SortField) GetValue() float64 {
+
+	return this.value
+}
 func (this *SortField) SortFilteredData(IsAscendingOrder bool, FilterDataIds []string, offset, limit int) []string {
 	d, err := this.getAllData()
 	if err != nil {
@@ -165,20 +168,20 @@ func (this *SortField) Output() (string, float64) {
 func (this *SortField) Rebuild(keyName, fieldName, docId string, value float64, ol *Core.OperationLib) *SortField {
 
 	return &SortField{
-		keyName:   keyName,
-		value:     value,
-		fieldName: fieldName,
-		docId:     docId,
-		ol:        ol,
+		keyName:      keyName,
+		value:        value,
+		fieldName:    fieldName,
+		docId:        docId,
+		operationLib: ol,
 	}
 }
 
 func CreateSorter(DataModelName, fieldName string, ol *Core.OperationLib) *SortField {
 
 	return &SortField{
-		keyName: NewKeyId(DataModelName, fieldName),
-		value:   0,
-		ol:      ol,
+		keyName:      NewKeyId(DataModelName, fieldName),
+		value:        0,
+		operationLib: ol,
 	}
 }
 

@@ -2,8 +2,11 @@ package DataAdapter
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/mailru/easyjson"
 	"github.com/simonks2016/Subway/Core"
+	"github.com/simonks2016/Subway/Filter"
+	"github.com/simonks2016/Subway/Sorter"
 	"github.com/simonks2016/Subway/define"
 	errors2 "github.com/simonks2016/Subway/errors"
 	"reflect"
@@ -14,24 +17,22 @@ import (
 
 const callOutputFunc = "Output"
 const callRebuildFunc = "Rebuild"
-const callUpgradeFunc = "Upgrade"
-const callSetRedis = "SetRedisConn"
 
-type FilterCallback func(key string, field any) error
-type SortCallback func(key, fieldName string, value float64) error
+type DiscoveryFilterField func(key string, field any) error
+type DiscoverySortField func(key, fieldName string, value float64) error
 
 type DataAdapter[ViewModel any] struct {
-	DocId          string     `json:"doc_id"`
-	Data           *ViewModel `json:"-"`
-	CreateTime     int64      `json:"create_time"`
-	ref            map[string]string
-	manyRefs       map[string]string
-	fields         map[string]any
-	filterFields   map[string]*define.FilterFieldSetting
-	sortFields     map[string]*define.SortFieldSetting
-	CallbackFilter FilterCallback
-	CallbackSort   SortCallback
-	OperationLib   *Core.OperationLib
+	DocId                        string     `json:"doc_id"`
+	Data                         *ViewModel `json:"-"`
+	CreateTime                   int64      `json:"create_time"`
+	ref                          map[string]string
+	manyRefs                     map[string]string
+	fields                       map[string]any
+	filterFields                 map[string]*define.FilterFieldSetting
+	sortFields                   map[string]*define.SortFieldSetting
+	CallbackDiscoveryFilterField DiscoveryFilterField
+	CallbackDiscoverySortField   DiscoverySortField
+	OperationLib                 *Core.OperationLib
 }
 
 func NewDataAdapter[ViewModel any](docId string, data *ViewModel) *DataAdapter[ViewModel] {
@@ -43,7 +44,7 @@ func NewDataAdapter[ViewModel any](docId string, data *ViewModel) *DataAdapter[V
 	}
 }
 
-func (this *DataAdapter[ViewModel]) Analyze(viewModel *ViewModel) {
+func (this *DataAdapter[ViewModel]) analyze(viewModel *ViewModel) {
 
 	var t = reflect.TypeOf(*viewModel)
 	var v = reflect.ValueOf(*viewModel)
@@ -73,8 +74,16 @@ func (this *DataAdapter[ViewModel]) Analyze(viewModel *ViewModel) {
 	for i := 0; i < t.NumField(); i++ {
 		//Determine whether it is a dynamic field
 		if DetermineDynamicFields(t.Field(i).Type) == true {
-			this.AnalyzeDynamicFields(t.Field(i).Name, v.Field(i))
+			this.analyzeDynamicFields(t.Field(i).Name, v.Field(i))
 		} else {
+			if t.Field(i).Name == "Id" {
+				if len(this.DocId) <= 0 {
+					this.DocId = Core.NewDocumentId(
+						Core.GetViewModelName(this.Data),
+						v.Field(i).String())
+				}
+			}
+
 			//if exist fields
 			if _, exist := this.fields[t.Field(i).Name]; !exist {
 				//
@@ -87,7 +96,7 @@ func (this *DataAdapter[ViewModel]) Analyze(viewModel *ViewModel) {
 	return
 }
 
-func (this *DataAdapter[ViewModel]) AnalyzeDynamicFields(FieldName string, FieldValue reflect.Value) {
+func (this *DataAdapter[ViewModel]) analyzeDynamicFields(FieldName string, FieldValue reflect.Value) {
 
 	if this.ref == nil {
 		this.ref = make(map[string]string)
@@ -105,6 +114,9 @@ func (this *DataAdapter[ViewModel]) AnalyzeDynamicFields(FieldName string, Field
 
 	var fieldValTypeName string
 
+	if FieldValue.IsZero() == true || FieldValue.IsNil() == true {
+		panic(fmt.Sprintf("You did not initialize the field(%s)", FieldName))
+	}
 	if FieldValue.Type().Kind() == reflect.Ptr {
 		fieldValTypeName = FieldValue.Elem().Type().Name()
 	} else {
@@ -160,8 +172,8 @@ func (this *DataAdapter[ViewModel]) AnalyzeDynamicFields(FieldName string, Field
 						KeyName:   v1.String(),
 					}
 					//callback
-					if this.CallbackFilter != nil {
-						err := this.CallbackFilter(v1.String(), v2.Interface())
+					if this.CallbackDiscoveryFilterField != nil {
+						err := this.CallbackDiscoveryFilterField(v1.String(), v2.Interface())
 						if err != nil {
 							panic(err)
 						}
@@ -184,8 +196,9 @@ func (this *DataAdapter[ViewModel]) AnalyzeDynamicFields(FieldName string, Field
 						Value:     v2.Float(),
 						KeyName:   v1.String(),
 					}
-					if this.CallbackSort != nil {
-						err := this.CallbackSort(v1.String(), FieldName, v2.Float())
+					if this.CallbackDiscoverySortField != nil {
+						err := this.CallbackDiscoverySortField(
+							v1.String(), FieldName, v2.Float())
 						if err != nil {
 							panic(err)
 						}
@@ -199,7 +212,7 @@ func (this *DataAdapter[ViewModel]) AnalyzeDynamicFields(FieldName string, Field
 
 func (this *DataAdapter[ViewModel]) Marshal() ([]byte, error) {
 
-	this.Analyze(this.Data)
+	this.analyze(this.Data)
 
 	var a = define.DataAgreement{
 		DocId:       this.DocId,
@@ -213,6 +226,21 @@ func (this *DataAdapter[ViewModel]) Marshal() ([]byte, error) {
 
 	return easyjson.Marshal(&a)
 
+}
+
+func (this *DataAdapter[ViewModel]) SimpleUnMarshal(dataByte []byte) (error, *define.DataAgreement) {
+
+	var a define.DataAgreement
+
+	if !json.Valid(dataByte) {
+		return errors2.ErrNotJson, nil
+	}
+	err := easyjson.Unmarshal(dataByte, &a)
+	if err != nil {
+		return err, nil
+	}
+
+	return nil, &a
 }
 
 func (this *DataAdapter[ViewModel]) UnMarshal(dataByte []byte) error {
@@ -241,20 +269,26 @@ func (this *DataAdapter[ViewModel]) UnMarshal(dataByte []byte) error {
 
 		if field.Type.Kind() == reflect.Ptr {
 			typeName = t1.Field(i).Type.Elem().Name()
-
 		}
 
-		//check
-		if checkIsDynamicFields(typeName) {
+		switch true {
+		case checkIsDynamicFields(typeName):
 			//rebuild the dynamic field
 			this.rebuildDynamicFields(typeName, fieldName, currentField, &a)
-		} else {
+		case field.Type.Kind() == reflect.Ptr, field.Type.Kind() == reflect.Struct:
+			//rebuild struct
+			if fieldValue, exist := a.Fields[fieldName]; exist {
+				this.rebuildStructField(field.Type, currentField, fieldValue.(map[string]interface{}))
+			}
+
+		default:
 			if fieldValue, exist := a.Fields[fieldName]; exist {
 				if currentField.CanSet() {
 					//set the value
 					currentField.Set(reflect.ValueOf(fieldValue))
 				}
 			}
+
 		}
 	}
 	return nil
@@ -262,15 +296,20 @@ func (this *DataAdapter[ViewModel]) UnMarshal(dataByte []byte) error {
 
 func (this *DataAdapter[ViewModel]) rebuildDynamicFields(typeName string, fieldName string, currentField reflect.Value, agree *define.DataAgreement) {
 
+	var keyName, value, fn, docId reflect.Value
+	var ol = reflect.ValueOf(this.OperationLib)
+	var ViewModelName = Core.GetViewModelName(this.Data)
+
 	switch true {
 	case checkIsRef(typeName):
+
 		if currentField.MethodByName(callRebuildFunc).IsNil() == false {
 			//get the key name from the agreement
 			if val, exist := agree.Refs[fieldName]; exist {
 				//gen the value list
 				var values = []reflect.Value{
 					reflect.ValueOf(val),
-					reflect.ValueOf(this.OperationLib),
+					ol,
 				}
 				//call the function
 				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)
@@ -287,7 +326,7 @@ func (this *DataAdapter[ViewModel]) rebuildDynamicFields(typeName string, fieldN
 				//gen the value list
 				var values = []reflect.Value{
 					reflect.ValueOf(val),
-					reflect.ValueOf(this.OperationLib),
+					ol,
 				}
 				//call the function
 				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)
@@ -303,21 +342,28 @@ func (this *DataAdapter[ViewModel]) rebuildDynamicFields(typeName string, fieldN
 		if currentField.MethodByName(callRebuildFunc).IsNil() == false {
 			//get the key name from the agreement
 			if val, exist := agree.SortFields[fieldName]; exist {
-
 				//gen the value list
-				var values = []reflect.Value{
-					reflect.ValueOf(val.KeyName),
-					reflect.ValueOf(val.FieldName),
-					reflect.ValueOf(agree.DocId),
-					reflect.ValueOf(val.Value),
-					reflect.ValueOf(this.OperationLib),
-				}
-				//call the function
-				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)
-				for _, value := range resultValues {
-					//set the result to dsa
-					currentField.Set(value)
-				}
+				keyName = reflect.ValueOf(val.KeyName)
+				fn = reflect.ValueOf(val.FieldName)
+				docId = reflect.ValueOf(agree.DocId)
+				value = reflect.ValueOf(val.Value)
+			} else {
+				keyName = reflect.ValueOf(Sorter.NewKeyId(ViewModelName, fieldName))
+				fn = reflect.ValueOf(fieldName)
+				docId = reflect.ValueOf("")
+				value = reflect.ValueOf(0.0)
+			}
+			//call the function
+			resultValues := currentField.MethodByName(callRebuildFunc).Call([]reflect.Value{
+				keyName,
+				fn,
+				docId,
+				value,
+				ol,
+			})
+			for _, value := range resultValues {
+				//set the result to dsa
+				currentField.Set(value)
 			}
 		}
 
@@ -326,24 +372,87 @@ func (this *DataAdapter[ViewModel]) rebuildDynamicFields(typeName string, fieldN
 		if currentField.MethodByName(callRebuildFunc).IsNil() == false {
 			//get the key name from the agreement
 			if val, exist := agree.FilterField[fieldName]; exist {
-
-				//gen the value list
-				var values = []reflect.Value{
-					reflect.ValueOf(val.KeyName),
-					reflect.ValueOf(val.Value),
-					reflect.ValueOf(this.OperationLib),
-				}
-				//call the function
-				resultValues := currentField.MethodByName(callRebuildFunc).Call(values)
-				for _, value := range resultValues {
-					//set the result to dsa
-					currentField.Set(value)
-				}
+				keyName = reflect.ValueOf(val.KeyName)
+				value = reflect.ValueOf(val.Value)
+			} else {
+				keyName = reflect.ValueOf(Filter.NewKeyId(ViewModelName, fieldName))
+				value = reflect.ValueOf("")
+			}
+			//call the function
+			resultValues := currentField.MethodByName(callRebuildFunc).Call([]reflect.Value{
+				keyName,
+				value,
+				ol,
+			})
+			for _, newField := range resultValues {
+				//set the result to dsa
+				currentField.Set(newField)
 			}
 		}
 
 	default:
 		return
+	}
+}
+
+func (this DataAdapter[ViewModel]) rebuildStructField(t reflect.Type, currentField reflect.Value, data map[string]interface{}) {
+
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	v := reflect.New(t)
+	//init
+	initializeStruct(t, v.Elem())
+	//
+	v1 := v.Elem()
+	//copy data to
+	for i := 0; i < v1.NumField(); i++ {
+
+		//get the name
+		var name = t.Field(i).Name
+		var tagName = t.Field(i).Tag.Get("json")
+		var fieldType = t.Field(i).Type
+		//if exist
+		val, exist := data[name]
+		if !exist {
+			//if tag name is not in data
+			if val, exist = data[tagName]; !exist {
+				continue
+			}
+		}
+		//if the field is struct or ptr
+		if fieldType.Kind() == reflect.Ptr || fieldType.Kind() == reflect.Struct {
+			this.rebuildStructField(t, v1.Field(i), val.(map[string]interface{}))
+		} else {
+			v1.Field(i).Set(reflect.ValueOf(val))
+		}
+	}
+	//set the field
+	currentField.Set(v)
+}
+
+func initializeStruct(t reflect.Type, v reflect.Value) {
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		ft := t.Field(i)
+
+		switch ft.Type.Kind() {
+		case reflect.Map:
+			f.Set(reflect.MakeMap(ft.Type))
+		case reflect.Slice:
+			f.Set(reflect.MakeSlice(ft.Type, 0, 0))
+		case reflect.Chan:
+			f.Set(reflect.MakeChan(ft.Type, 0))
+		case reflect.Struct:
+			initializeStruct(ft.Type, f)
+		case reflect.Ptr:
+			//new prt
+			fv := reflect.New(ft.Type.Elem())
+			//init
+			initializeStruct(ft.Type.Elem(), fv.Elem())
+			f.Set(fv)
+		default:
+		}
 	}
 }
 
