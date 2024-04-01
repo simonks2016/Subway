@@ -7,18 +7,18 @@ import (
 	"time"
 )
 
-type _subwayConnection struct {
+type Connection struct {
 	lib *Core.OperationLib
 }
 
-func (this *_subwayConnection) GetLib() *Core.OperationLib {
+func (this *Connection) GetLib() *Core.OperationLib {
 
 	return this.lib
 }
 
-var Subway *_subwayConnection = nil
+var Subway *Connection = nil
 
-func NewRedisConnWithSubway(address, userName, password string) *_subwayConnection {
+func NewRedisConnWithSubway(address, userName, password string) *Connection {
 
 	redisAuth := userName + ":" + password
 
@@ -49,7 +49,7 @@ func NewRedisConnWithSubway(address, userName, password string) *_subwayConnecti
 		IdleTimeout: time.Minute,
 	}
 
-	Subway = &_subwayConnection{
+	Subway = &Connection{
 		lib: Core.NewOperationLib(pool),
 	}
 	//return Subway
