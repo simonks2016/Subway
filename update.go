@@ -15,9 +15,7 @@ func Update[VM any](data VM, docId string) error {
 		return errors.New("you have not set up Subway")
 	}
 
-	var ol = Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	var ol = Subway.GetLib()
 	var ViewModelName = reflect.TypeOf(data).Name()
 	//if is the ptr
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {

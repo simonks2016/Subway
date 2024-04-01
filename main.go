@@ -2,12 +2,18 @@ package subway
 
 import (
 	"github.com/gomodule/redigo/redis"
+	"github.com/simonks2016/Subway/Core"
 	"strings"
 	"time"
 )
 
 type _subwayConnection struct {
-	pool *redis.Pool
+	lib *Core.OperationLib
+}
+
+func (this *_subwayConnection) GetLib() *Core.OperationLib {
+
+	return this.lib
 }
 
 var Subway *_subwayConnection = nil
@@ -43,7 +49,9 @@ func NewRedisConnWithSubway(address, userName, password string) *_subwayConnecti
 		IdleTimeout: time.Minute,
 	}
 
-	Subway = &_subwayConnection{pool: pool}
+	Subway = &_subwayConnection{
+		lib: Core.NewOperationLib(pool),
+	}
 	//return Subway
 	return Subway
 }

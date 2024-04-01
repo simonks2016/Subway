@@ -1,7 +1,6 @@
 package subway
 
 import (
-	"github.com/simonks2016/Subway/Core"
 	"github.com/simonks2016/Subway/DataAdapter"
 	"github.com/simonks2016/Subway/Filter"
 	errors2 "github.com/simonks2016/Subway/errors"
@@ -12,9 +11,7 @@ func BulkInsert[vm any](data map[string]*vm) error {
 	if Subway == nil {
 		return errors2.ErrNotSetSubway
 	}
-	var lib = Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	var lib = Subway.GetLib()
 	var insertData = make(map[string][]byte)
 	//
 	//key: key Name

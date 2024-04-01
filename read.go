@@ -15,9 +15,7 @@ func Read[vm any](dataId string) (*vm, error) {
 	if Subway == nil {
 		return nil, errors2.ErrNotSetSubway
 	}
-	var ol = &Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	var ol = Subway.GetLib()
 	var v vm
 	var ViewModelName = reflect.TypeOf(v).Name()
 	if reflect.TypeOf(v).Kind() == reflect.Ptr {
@@ -60,9 +58,7 @@ func List[vm any, CType Filter.FieldType](request *QueryRequest[CType], offset, 
 		return nil, errors.New("you have not set up Subway")
 	}
 	var v vm
-	var ol = &Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	var ol = Subway.GetLib()
 	var ViewModelName = reflect.TypeOf(v).Name()
 	if reflect.TypeOf(v).Kind() == reflect.Ptr {
 		ViewModelName = reflect.TypeOf(v).Elem().Name()

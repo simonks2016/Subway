@@ -10,9 +10,7 @@ func Expire[VM any](DataId string, ExpirationSeconds int64) error {
 	if Subway == nil {
 		return errors2.ErrNotSetSubway
 	}
-	var lib = Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	var lib = Subway.GetLib()
 	var vm VM
 	//get View model Name
 	vm_name := Core.GetViewModelName(vm)

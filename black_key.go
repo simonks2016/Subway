@@ -3,7 +3,6 @@ package subway
 import (
 	"errors"
 	"fmt"
-	"github.com/simonks2016/Subway/Core"
 )
 
 func newBlackKey(viewModelName, dataId string) string {
@@ -16,9 +15,7 @@ func SetBackKey(ViewModelName, DataId string, expireTime int64) error {
 		return errors.New("you have not set up Subway")
 	}
 	var key = newBlackKey(ViewModelName, DataId)
-	var op = Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	var op = Subway.GetLib()
 	return op.SetStringEx(key, DataId, expireTime)
 }
 func ExistBackKey(ViewModel, DataId string) (bool, error) {
@@ -28,8 +25,6 @@ func ExistBackKey(ViewModel, DataId string) (bool, error) {
 	}
 
 	var key = newBlackKey(ViewModel, DataId)
-	var op = Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	var op = Subway.GetLib()
 	return op.Exist(key)
 }

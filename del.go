@@ -19,10 +19,8 @@ func Del[VM any](ids ...string) error {
 	var EditHash = make(map[string][]any)
 
 	var ViewModelName = GetViewModelName(v)
-
-	ol := Core.OperationLib{
-		Fuel: Subway.pool,
-	}
+	//get the lib
+	ol := Subway.GetLib()
 	for _, s := range ids {
 		//delete
 		docIds = append(docIds, Core.NewDocumentId(ViewModelName, s))

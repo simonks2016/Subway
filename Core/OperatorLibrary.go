@@ -796,3 +796,10 @@ func (o OperationLib) ExistsHashMap(key interface{}, field interface{}) (bool, e
 func (o OperationLib) NewDocumentId(topic, id string) string {
 	return fmt.Sprintf("subway-document-%s-%s", topic, id)
 }
+
+func NewOperationLib(r *redis.Pool) *OperationLib {
+
+	return &OperationLib{
+		Fuel: r,
+	}
+}
