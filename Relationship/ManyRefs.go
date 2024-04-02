@@ -17,7 +17,8 @@ type ManyReferencesInterface[dataModel any] interface {
 	Has(string) (bool, error)
 	GetCount() (int, error)
 	Output() string
-	Rebuild(string) *ManyReferencesInterface[dataModel]
+	Rebuild(string, *Core.OperationLib) *ManyReferencesInterface[dataModel]
+	New(*Core.OperationLib)
 }
 
 type ManyRefs[dataModel any] struct {
@@ -25,6 +26,10 @@ type ManyRefs[dataModel any] struct {
 	keyName      string
 	operationLib *Core.OperationLib
 	//ManyReferencesInterface[dataModel]
+}
+
+func (this *ManyRefs[dataModel]) New(lib *Core.OperationLib) {
+	this.operationLib = lib
 }
 
 func (this *ManyRefs[dataModel]) Query() ([]*dataModel, error) {
@@ -171,13 +176,14 @@ func (this *ManyRefs[dataModel]) HasAndCall(d1 []string, call func(string2 strin
 	return nil
 }
 
-func NewManyRefs[dataModel any](CurrentDataId string, fieldName string) *ManyRefs[dataModel] {
-	var d dataModel
-	return &ManyRefs[dataModel]{
-		keyName: NewKeyId(Core.GetViewModelName(d), CurrentDataId, fieldName),
+func NewManyRefs[currentDataModel, targetDataModel any](CurrentDataId, fieldName string) *ManyRefs[targetDataModel] {
+	var current currentDataModel
+	return &ManyRefs[targetDataModel]{
+		keyName: NewKeyId(Core.GetViewModelName(current), CurrentDataId, fieldName),
 	}
 }
 
 func NewKeyId(ViewModelName, ViewModelId, FieldName string) string {
 	return fmt.Sprintf("Many-Refs-%s-%s-%s", ViewModelName, ViewModelId, FieldName)
+
 }

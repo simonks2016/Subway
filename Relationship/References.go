@@ -12,14 +12,19 @@ type ReferencesInterface[dataModel any] interface {
 	Edit(string) error
 	Delete() error
 	Output() string
-	Rebuild(string)
+	Rebuild(string, *Core.OperationLib)
+	New(lib *Core.OperationLib)
 }
 
 type Ref[dataModel any] struct {
-	keyName   string
+	keyName      string
 	dataModel    *dataModel
 	operationLib *Core.OperationLib
 	//ReferencesInterface[dataModel]
+}
+
+func (m *Ref[dataModel]) New(lib *Core.OperationLib) {
+	m.operationLib = lib
 }
 
 func (m *Ref[dataModel]) Query() (*dataModel, error) {

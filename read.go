@@ -46,10 +46,10 @@ type SortRequest struct {
 }
 
 type QueryRequest[ConditionType Filter.FieldType] struct {
-	FieldName   string        `json:"field_name"`
-	Condition   ConditionType `json:"condition_type"`
-	FilterFunc  Filter.CompareFunc[ConditionType]
-	SortRequest *SortRequest `json:"sort_request"`
+	FieldName   string                            `json:"field_name"`
+	Condition   ConditionType                     `json:"condition_type"`
+	FilterFunc  Filter.CompareFunc[ConditionType] `json:"filter_func"`
+	SortRequest *SortRequest                      `json:"sort_request"`
 }
 
 func List[vm any, CType Filter.FieldType](request *QueryRequest[CType], offset, limit int) ([]*vm, error) {
@@ -59,10 +59,8 @@ func List[vm any, CType Filter.FieldType](request *QueryRequest[CType], offset, 
 	}
 	var v vm
 	var ol = Subway.GetLib()
-	var ViewModelName = reflect.TypeOf(v).Name()
-	if reflect.TypeOf(v).Kind() == reflect.Ptr {
-		ViewModelName = reflect.TypeOf(v).Elem().Name()
-	}
+	var ViewModelName = GetViewModelName(v)
+
 	//create filter
 	filter, err := Filter.CreateFilter[CType](ViewModelName, request.FieldName, request.Condition, ol)
 	if err != nil {
@@ -74,6 +72,8 @@ func List[vm any, CType Filter.FieldType](request *QueryRequest[CType], offset, 
 		FF = Filter.Equal[CType]
 	}
 	dataIds := filter.GetSameConditions(request.Condition, FF)
+
+	//if the sort is empty
 	if request.SortRequest != nil {
 		//create Sorter
 		sorter := Sorter.CreateSorter(ViewModelName, request.SortRequest.SortFieldName, ol)
@@ -110,4 +110,8 @@ func List[vm any, CType Filter.FieldType](request *QueryRequest[CType], offset, 
 	}
 
 	return response, nil
+}
+
+func DoubleFilter[f1, f2 Filter.FieldType]() ([]string, error) {
+
 }

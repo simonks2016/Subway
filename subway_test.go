@@ -1,7 +1,6 @@
 package subway
 
 import (
-	"fmt"
 	"github.com/simonks2016/Subway/Filter"
 	"github.com/simonks2016/Subway/Relationship"
 	"github.com/simonks2016/Subway/Sorter"
@@ -69,7 +68,7 @@ func TestNewSubway(t *testing.T) {
 		Description: "bbb",
 		Id:          "a2a2a2a2",
 		Creator:     Relationship.NewRef[Customer]("u1"),
-		Tags:        Relationship.NewManyRefs[Tag]("a2a2a2a2", "Tags"),
+		Tags:        Relationship.NewManyRefs[Video, Tag]("a2a2a2a2", "Tags"),
 		State:       Filter.NewFilter[int]("Video", "State", 1),
 		Uid:         Filter.NewFilter[string]("Video", "Uid", "a1"),
 		IsPublic:    Filter.NewFilter[int]("Video", "IsPublic", 1),
@@ -82,7 +81,7 @@ func TestNewSubway(t *testing.T) {
 		Description: "bbb",
 		Id:          "a3a3a3a3",
 		Creator:     Relationship.NewRef[Customer]("u1"),
-		Tags:        Relationship.NewManyRefs[Tag]("a3a3a3a3", "Tags"),
+		Tags:        Relationship.NewManyRefs[Video, Tag]("a3a3a3a3", "Tags"),
 		State:       Filter.NewFilter[int]("Video", "State", 4),
 		Uid:         Filter.NewFilter[string]("Video", "Uid", "a1"),
 		IsPublic:    Filter.NewFilter[int]("Video", "IsPublic", 1),
@@ -104,13 +103,13 @@ func TestNewSubway(t *testing.T) {
 
 	for _, v := range list {
 		fmt.Println(v.IsPublic.Set(1, v.Id))
-	}*/
+	}
 
 	err := Del[Video](v1.Id, v2.Id)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
-	}
+	}*/
 
 	/*
 		err := BulkInsert[Video](map[string]*Video{
