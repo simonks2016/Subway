@@ -166,11 +166,11 @@ func (this *FilterField[fieldType]) Rebuild(keyName string, value any, ol *Core.
 	}
 }
 
-func NewFilter[fieldType FieldType](dataModelName string, fieldName string, fieldVale fieldType, DataIds ...string) *FilterField[fieldType] {
+func NewFilter[fieldType FieldType](dataModelName string, fieldName string, fieldValue fieldType, DataIds ...string) *FilterField[fieldType] {
 
 	return &FilterField[fieldType]{
 		keyName:   NewKeyId(dataModelName, fieldName),
-		keyValue:  fieldVale,
+		keyValue:  fieldValue,
 		fieldName: fieldName,
 		DataIds:   DataIds,
 	}

@@ -111,7 +111,3 @@ func List[vm any, CType Filter.FieldType](request *QueryRequest[CType], offset, 
 
 	return response, nil
 }
-
-func DoubleFilter[f1, f2 Filter.FieldType]() ([]string, error) {
-
-}

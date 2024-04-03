@@ -185,12 +185,12 @@ func CreateSorter(DataModelName, fieldName string, ol *Core.OperationLib) *SortF
 	}
 }
 
-func NewSorter(dataModelName, fieldName string, fieldVale float64) *SortField {
+func NewSorter(dataModelName, fieldName string, fieldValue float64) *SortField {
 
 	s := &SortField{
 		keyName:   NewKeyId(dataModelName, fieldName),
 		fieldName: fieldName,
-		value:     fieldVale,
+		value:     fieldValue,
 	}
 	return s
 }

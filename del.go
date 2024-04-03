@@ -15,7 +15,7 @@ func Del[VM any](ids ...string) error {
 	var v VM
 	var docIds []interface{}
 	var deleteKeys []interface{}
-	var deleteHash = make(map[string]string)
+	//var deleteHash = make(map[string]string)
 	var EditHash = make(map[string][]any)
 
 	var ViewModelName = GetViewModelName(v)
@@ -46,7 +46,10 @@ func Del[VM any](ids ...string) error {
 
 		for _, setting := range d.SortFields {
 			//add to delete hash / key:key name value: docId
-			deleteHash[setting.KeyName] = d.DocId
+			err = ol.DelHashMap(setting.KeyName, docIds)
+			if err != nil {
+				return err
+			}
 		}
 
 		for _, setting := range d.FilterField {
@@ -65,6 +68,8 @@ func Del[VM any](ids ...string) error {
 	}
 	//
 	deleteKeys = append(deleteKeys, docIds...)
+
+
 
 	//upgrade the filter field
 	for keyName, field := range EditHash {

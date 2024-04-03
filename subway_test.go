@@ -1,6 +1,7 @@
 package subway
 
 import (
+	"fmt"
 	"github.com/simonks2016/Subway/Filter"
 	"github.com/simonks2016/Subway/Relationship"
 	"github.com/simonks2016/Subway/Sorter"
@@ -90,6 +91,9 @@ func TestNewSubway(t *testing.T) {
 	}
 
 	NewRedisConnWithSubway("127.0.0.1:6379", "root", "")
+
+	fmt.Println(v2.Title)
+	fmt.Println(v1.Title)
 
 	/*list, err := List[Video, int](&QueryRequest[int]{
 		FieldName:   "State",
