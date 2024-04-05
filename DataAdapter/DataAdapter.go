@@ -11,6 +11,7 @@ import (
 	errors2 "github.com/simonks2016/Subway/errors"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -284,8 +285,24 @@ func (this *DataAdapter[ViewModel]) UnMarshal(dataByte []byte) error {
 		default:
 			if fieldValue, exist := a.Fields[fieldName]; exist {
 				if currentField.CanSet() {
-					//set the value
-					currentField.Set(reflect.ValueOf(fieldValue))
+					//Are the types of both parties consistent?
+					if reflect.ValueOf(fieldValue).Type() == currentField.Type() {
+						//set the value
+						currentField.Set(reflect.ValueOf(fieldValue))
+					} else {
+						fv := reflect.ValueOf(fieldValue)
+
+						switch currentField.Type().Kind() {
+						case reflect.Slice:
+							handleSlice(fv, currentField)
+						default:
+							if reflect.ValueOf(fieldValue).CanConvert(currentField.Type()) == false {
+								panic("Unable to convert target type")
+							}
+							currentField.Set(fv.Convert(currentField.Type()))
+						}
+
+					}
 				}
 			}
 
@@ -500,4 +517,75 @@ func sliceHas(d []string, s string) bool {
 		}
 	}
 	return false
+}
+
+func handleSlice(value reflect.Value, targetField reflect.Value) {
+	Len := value.Len()
+	cf := reflect.MakeSlice(targetField.Type(), Len, (Len-1)*2)
+	targetType := targetField.Type()
+
+	for i1 := 0; i1 < Len; i1++ {
+		vf := value.Index(i1).Interface()
+		svf := fmt.Sprintf("%v", vf)
+
+		switch targetType.Elem().Kind() {
+		case reflect.String:
+			if reflect.ValueOf(svf).CanConvert(targetType.Elem()) {
+				v5 := reflect.ValueOf(svf).Convert(targetType.Elem())
+				cf.Index(i1).Set(v5)
+			} else {
+				panic("cannot be converted to string")
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+
+			parseInt, err := strconv.ParseInt(svf, 0, 64)
+			if err != nil {
+				panic(err)
+			}
+			if reflect.ValueOf(parseInt).CanConvert(targetType.Elem()) {
+				v5 := reflect.ValueOf(parseInt).Convert(targetType.Elem())
+				cf.Index(i1).Set(v5)
+			} else {
+				panic("cannot be converted to int")
+			}
+		case reflect.Float32, reflect.Float64:
+			parseFloat, err := strconv.ParseFloat(svf, 64)
+			if err != nil {
+				panic(err)
+			}
+			if reflect.ValueOf(parseFloat).CanConvert(targetType.Elem()) {
+				v5 := reflect.ValueOf(parseFloat).Convert(targetType.Elem())
+				cf.Index(i1).Set(v5)
+			} else {
+				panic("cannot be converted to float")
+			}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			parseUint, err := strconv.ParseUint(svf, 0, 64)
+			if err != nil {
+				panic(err)
+			}
+			if reflect.ValueOf(parseUint).CanConvert(targetType.Elem()) {
+				v5 := reflect.ValueOf(parseUint).Convert(targetType.Elem())
+				cf.Index(i1).Set(v5)
+			} else {
+				panic("cannot be converted to int")
+			}
+		case reflect.Bool:
+			parseBool, err := strconv.ParseBool(svf)
+			if err != nil {
+				panic(err)
+			}
+			if reflect.ValueOf(parseBool).CanConvert(targetType.Elem()) {
+				v5 := reflect.ValueOf(parseBool).Convert(targetType.Elem())
+				cf.Index(i1).Set(v5)
+			} else {
+				panic("cannot be converted to int")
+			}
+		//[]byte
+		default:
+			panic("The target type cannot be" + targetType.Name())
+		}
+
+	}
+	targetField.Set(cf)
 }

@@ -32,6 +32,12 @@ type Video struct {
 	IsPublic    *Filter.FilterField[int]
 	CreateTime  *Sorter.SortField `json:"create_time"`
 	Click       *Sorter.SortField `json:"click"`
+	Viewers     int64             `json:"viewers"`
+	Ids         []string          `json:"ids"`
+	T1          []int             `json:"t1"`
+	T2          []float64         `json:"t2"`
+	T3          []bool            `json:"t3"`
+	T4          []byte            `json:"t4"`
 }
 
 type Program struct {
@@ -75,25 +81,37 @@ func TestNewSubway(t *testing.T) {
 		IsPublic:    Filter.NewFilter[int]("Video", "IsPublic", 1),
 		CreateTime:  Sorter.NewSorter("Video", "CreateTime", float64(time.Now().Unix())),
 		Click:       Sorter.NewSorter("Video", "CreateTime", 1),
+		Viewers:     10,
+		Ids:         []string{"a", "b", "c"},
+		T1:          []int{0, 2, 1},
+		T2:          []float64{0.15, 0.23},
+		T3:          []bool{false, false},
+		T4:          []byte("a"),
 	}
 
-	var v2 = Video{
-		Title:       "aaaa",
-		Description: "bbb",
-		Id:          "a3a3a3a3",
-		Creator:     Relationship.NewRef[Customer]("u1"),
-		Tags:        Relationship.NewManyRefs[Video, Tag]("a3a3a3a3", "Tags"),
-		State:       Filter.NewFilter[int]("Video", "State", 4),
-		Uid:         Filter.NewFilter[string]("Video", "Uid", "a1"),
-		IsPublic:    Filter.NewFilter[int]("Video", "IsPublic", 1),
-		CreateTime:  Sorter.NewSorter("Video", "CreateTime", float64(time.Now().Unix())),
-		Click:       Sorter.NewSorter("Video", "CreateTime", 10),
-	}
+	/*
+		var v2 = Video{
+			Title:       "aaaa",
+			Description: "bbb",
+			Id:          "a3a3a3a3",
+			Creator:     Relationship.NewRef[Customer]("u1"),
+			Tags:        Relationship.NewManyRefs[Video, Tag]("a3a3a3a3", "Tags"),
+			State:       Filter.NewFilter[int]("Video", "State", 4),
+			Uid:         Filter.NewFilter[string]("Video", "Uid", "a1"),
+			IsPublic:    Filter.NewFilter[int]("Video", "IsPublic", 1),
+			CreateTime:  Sorter.NewSorter("Video", "CreateTime", float64(time.Now().Unix())),
+			Click:       Sorter.NewSorter("Video", "CreateTime", 10),
+			Viewers:     10,
+		}*/
 
 	NewRedisConnWithSubway("127.0.0.1:6379", "root", "")
+	fmt.Println(v1.T1)
 
-	fmt.Println(v2.Title)
-	fmt.Println(v1.Title)
+	/*
+		err := Update[Video](v1, v1.Id)
+		if err != nil {
+			return
+		}*/
 
 	/*list, err := List[Video, int](&QueryRequest[int]{
 		FieldName:   "State",
