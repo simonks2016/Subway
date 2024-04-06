@@ -74,7 +74,7 @@ func TestNewSubway(t *testing.T) {
 		Title:       "aaaa",
 		Description: "bbb",
 		Id:          "a2a2a2a2",
-		Creator:     Relationship.NewRef[Customer]("u1"),
+		Creator:     nil,
 		Tags:        Relationship.NewManyRefs[Video, Tag]("a2a2a2a2", "Tags"),
 		State:       Filter.NewFilter[int]("Video", "State", 1),
 		Uid:         Filter.NewFilter[string]("Video", "Uid", "a1"),
@@ -105,8 +105,14 @@ func TestNewSubway(t *testing.T) {
 		}*/
 
 	NewRedisConnWithSubway("127.0.0.1:6379", "root", "")
-	fmt.Println(v1.T1)
 
+	read, err := Read[Video](v1.Id)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Println(read.Creator.Query())
 	/*
 		err := Update[Video](v1, v1.Id)
 		if err != nil {
