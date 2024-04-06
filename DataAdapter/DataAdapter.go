@@ -115,9 +115,10 @@ func (this *DataAdapter[ViewModel]) analyzeDynamicFields(FieldName string, Field
 
 	var fieldValTypeName string
 
-	/*if FieldValue.IsZero() == true || FieldValue.IsNil() == true {
-		panic(fmt.Sprintf("You did not initialize the field(%s)", FieldName))
-	}*/
+	if FieldValue.IsZero() == true || FieldValue.IsNil() == true {
+		//panic(fmt.Sprintf("You did not initialize the field(%s)", FieldName))
+		return
+	}
 	if FieldValue.Type().Kind() == reflect.Ptr {
 		fieldValTypeName = FieldValue.Elem().Type().Name()
 	} else {
