@@ -34,10 +34,12 @@ func (this *ManyRefs[dataModel]) New(lib *Core.OperationLib) {
 
 func (this *ManyRefs[dataModel]) Query() ([]*dataModel, error) {
 
+	if this == nil {
+		return nil, nil
+	}
 	if len(this.keyName) <= 0 {
 		return nil, errors.ErrMissingTheKeyName
 	}
-
 	if this.operationLib == nil || this.operationLib.Fuel == nil {
 		return nil, errors.ErrNotSetSubway
 	}

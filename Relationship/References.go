@@ -29,6 +29,9 @@ func (m *Ref[dataModel]) New(lib *Core.OperationLib) {
 
 func (m *Ref[dataModel]) Query() (*dataModel, error) {
 
+	if m == nil {
+		return nil, nil
+	}
 	if len(m.keyName) <= 0 {
 		return nil, errors2.ErrMissingTheKeyName
 	}

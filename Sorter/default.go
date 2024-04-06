@@ -117,6 +117,9 @@ func (this *SortField) Sort(IsAscendingOrder bool, filterGreaterThan float64) []
 }
 func (this *SortField) GetValue() float64 {
 
+	if this == nil {
+		return 0.0
+	}
 	return this.value
 }
 func (this *SortField) SortFilteredData(IsAscendingOrder bool, FilterDataIds []string, offset, limit int) []string {

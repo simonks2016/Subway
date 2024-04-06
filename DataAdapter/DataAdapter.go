@@ -115,9 +115,9 @@ func (this *DataAdapter[ViewModel]) analyzeDynamicFields(FieldName string, Field
 
 	var fieldValTypeName string
 
-	if FieldValue.IsZero() == true || FieldValue.IsNil() == true {
+	/*if FieldValue.IsZero() == true || FieldValue.IsNil() == true {
 		panic(fmt.Sprintf("You did not initialize the field(%s)", FieldName))
-	}
+	}*/
 	if FieldValue.Type().Kind() == reflect.Ptr {
 		fieldValTypeName = FieldValue.Elem().Type().Name()
 	} else {
@@ -127,7 +127,7 @@ func (this *DataAdapter[ViewModel]) analyzeDynamicFields(FieldName string, Field
 	switch true {
 
 	case checkIsRef(fieldValTypeName):
-		if FieldValue.IsZero() == false {
+		if FieldValue.IsZero() == false && FieldValue.IsNil() == false {
 			if !FieldValue.MethodByName(callOutputFunc).IsZero() &&
 				!FieldValue.MethodByName(callOutputFunc).IsNil() {
 				//call func
@@ -142,7 +142,7 @@ func (this *DataAdapter[ViewModel]) analyzeDynamicFields(FieldName string, Field
 			}
 		}
 	case checkIsManyRef(fieldValTypeName):
-		if FieldValue.IsZero() == false {
+		if FieldValue.IsZero() == false && FieldValue.IsNil() == false {
 			if !FieldValue.MethodByName(callOutputFunc).IsZero() &&
 				!FieldValue.MethodByName(callOutputFunc).IsNil() {
 				values := FieldValue.MethodByName(callOutputFunc).Call([]reflect.Value{})
@@ -157,7 +157,7 @@ func (this *DataAdapter[ViewModel]) analyzeDynamicFields(FieldName string, Field
 			}
 		}
 	case checkIsFilterField(fieldValTypeName):
-		if FieldValue.IsZero() == false {
+		if FieldValue.IsZero() == false && FieldValue.IsNil() == false {
 			if FieldValue.MethodByName(callOutputFunc).IsZero() == false &&
 				FieldValue.MethodByName(callOutputFunc).IsNil() == false {
 				//call func
@@ -184,7 +184,7 @@ func (this *DataAdapter[ViewModel]) analyzeDynamicFields(FieldName string, Field
 
 		}
 	case checkIsSortField(fieldValTypeName):
-		if FieldValue.IsZero() == false {
+		if FieldValue.IsZero() == false && FieldValue.IsNil() == false {
 			if FieldValue.MethodByName(callOutputFunc).IsZero() == false &&
 				FieldValue.MethodByName(callOutputFunc).IsNil() == false {
 				values := FieldValue.MethodByName(callOutputFunc).Call([]reflect.Value{})

@@ -45,6 +45,10 @@ func (this *FilterField[fieldType]) GetSameConditions(Conditions fieldType, Comp
 }
 func (this *FilterField[fieldType]) Get() fieldType {
 
+	if this == nil {
+		var d fieldType
+		return d
+	}
 	return this.keyValue
 }
 func (this *FilterField[fieldType]) Set(value fieldType, docIds ...string) error {
