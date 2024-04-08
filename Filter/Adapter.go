@@ -1,35 +1,73 @@
 package Filter
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
 )
 
-func Convert[FType FieldType](input any) any {
+func Convert[FType FieldType](input any) (any, error) {
 
 	var a1 FType
 
-	if input == nil {
-		return 0
-	}
-	var t1, t2 = reflect.TypeOf(a1), reflect.TypeOf(input)
-
-	if t1.Kind() != t2.Kind() {
-
-		switch t2.Kind() {
-		case reflect.Float64, reflect.Float32:
-			return float2Any(t1, input.(float64))
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return int2Any(t1, input.(int))
-		case reflect.String:
-			return string2Any(t1, input.(string))
+	/*
+		if input == nil {
+			return 0
 		}
-		return nil
+		var t1, t2 = reflect.TypeOf(a1), reflect.TypeOf(input)
 
-	} else {
-		return input
+		if t1.Kind() != t2.Kind() {
+
+			switch t2.Kind() {
+			case reflect.Float64, reflect.Float32:
+				return float2Any(t1, input.(float64))
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				return int2Any(t1, input.(int))
+			case reflect.String:
+				return string2Any(t1, input.(string))
+			}
+			return nil
+
+		} else {
+			return input
+		}*/
+
+	inputString := fmt.Sprintf("%v", input)
+	var t1 = reflect.TypeOf(a1)
+
+	switch t1.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		parseInt, err := strconv.ParseInt(inputString, 0, 64)
+		if err != nil {
+			return 0, err
+		}
+		return parseInt, nil
+	case reflect.Float32, reflect.Float64:
+		parseFloat, err := strconv.ParseFloat(inputString, 64)
+		if err != nil {
+			return 0, err
+		}
+		return parseFloat, nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		parseUint, err := strconv.ParseUint(inputString, 0, 64)
+		if err != nil {
+			return 0, err
+		}
+		return parseUint, nil
+	case reflect.String:
+		return inputString, nil
+	case reflect.Bool:
+		parseBool, err := strconv.ParseBool(inputString)
+		if err != nil {
+			return false, err
+		}
+		return parseBool, err
+	default:
+		return nil, errors.New(fmt.Sprintf("we don't support this type(%s)", t1.Name()))
+
 	}
+
 }
 
 func float2Any(target reflect.Type, current float64) any {

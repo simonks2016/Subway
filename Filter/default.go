@@ -131,10 +131,13 @@ func (this *FilterField[fieldType]) getAllData() error {
 		var key, value = hashMap[i].([]uint8), hashMap[i+1].([]uint8)
 		k1 := string(key)
 		v1 := string(value)
+
 		//convert to key
-		k2 := Convert[fieldType](k1)
-		//add to map
-		_newMap[k2.(fieldType)] = SplitString(v1)
+		k2, err := Convert[fieldType](k1)
+		if err != nil && k2 != nil {
+			//add to map
+			_newMap[k2.(fieldType)] = SplitString(v1)
+		}
 	}
 
 	this._map = _newMap
@@ -155,12 +158,16 @@ func (this *FilterField[fieldType]) Output() (string, fieldType) {
 
 func (this *FilterField[fieldType]) Rebuild(keyName string, value any, ol *Core.OperationLib) *FilterField[fieldType] {
 
-	if value != nil && !reflect.ValueOf(value).IsZero() {
-		v1 := Convert[fieldType](value)
-		return &FilterField[fieldType]{
-			keyName:      keyName,
-			keyValue:     v1.(fieldType),
-			operationLib: ol,
+	if value != nil && !reflect.ValueOf(value).IsZero() && !reflect.ValueOf(value).IsNil() {
+		//convert
+		v1, err := Convert[fieldType](value)
+		//not error
+		if err != nil {
+			return &FilterField[fieldType]{
+				keyName:      keyName,
+				keyValue:     v1.(fieldType),
+				operationLib: ol,
+			}
 		}
 	}
 
