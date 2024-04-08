@@ -4,7 +4,6 @@ import (
 	"github.com/simonks2016/Subway/Core"
 	"github.com/simonks2016/Subway/DataAdapter"
 	errors2 "github.com/simonks2016/Subway/errors"
-	"reflect"
 )
 
 type ReferencesInterface[dataModel any] interface {
@@ -17,9 +16,10 @@ type ReferencesInterface[dataModel any] interface {
 }
 
 type Ref[dataModel any] struct {
-	keyName      string
-	dataModel    *dataModel
+	keyName string
+	//dataModel    *dataModel
 	operationLib *Core.OperationLib
+	dataId       string
 	//ReferencesInterface[dataModel]
 }
 
@@ -52,26 +52,27 @@ func (m *Ref[dataModel]) Query() (*dataModel, error) {
 	return dsa.Data, nil
 }
 func (m *Ref[dataModel]) Edit(dataId string) {
-	m.keyName = Core.NewDocumentId(reflect.TypeOf(m.dataModel).Name(), dataId)
+	var d dataModel
+	m.keyName = Core.NewDocumentId(Core.GetViewModelName(d), dataId)
 }
 func (m *Ref[dataModel]) Delete() {
 	m.keyName = ""
 }
 func (m *Ref[dataModel]) Output() string {
-	return m.keyName
+	return m.dataId
 }
 
-func (m *Ref[dataModel]) Rebuild(keyName string, ol *Core.OperationLib) *Ref[dataModel] {
+func (m *Ref[dataModel]) Rebuild(dataId string, ol *Core.OperationLib) *Ref[dataModel] {
 
-	m = &Ref[dataModel]{
-		keyName:      keyName,
+	var d dataModel
+	return &Ref[dataModel]{
+		keyName:      Core.NewDocumentId(Core.GetViewModelName(d), dataId),
 		operationLib: ol,
+		dataId:       dataId,
 	}
-
-	return m
 }
 
 func NewRef[dataModel any](dataId string) *Ref[dataModel] {
-
-	return &Ref[dataModel]{keyName: dataId}
+	var d dataModel
+	return &Ref[dataModel]{keyName: Core.NewDocumentId(Core.GetViewModelName(d), dataId), dataId: dataId}
 }

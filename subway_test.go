@@ -106,13 +106,19 @@ func TestNewSubway(t *testing.T) {
 
 	NewRedisConnWithSubway("127.0.0.1:6379", "root", "")
 
-	read, err := Read[Video](v1.Id)
+	exists, err := Exists[Video](v1.Id)
 	if err != nil {
-		fmt.Println(err.Error())
 		return
 	}
+	fmt.Println(exists)
+	/*
+		read, err := Read[Video](v1.Id)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 
-	fmt.Println(read.Creator.Query())
+		fmt.Println(read.Creator.Query())*/
 	/*
 		err := Update[Video](v1, v1.Id)
 		if err != nil {
