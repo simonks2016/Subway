@@ -6,7 +6,6 @@ import (
 	"github.com/simonks2016/Subway/Relationship"
 	"github.com/simonks2016/Subway/Sorter"
 	"testing"
-	"time"
 )
 
 type Customer struct {
@@ -70,7 +69,7 @@ type TimeLineContent struct {
 
 func TestNewSubway(t *testing.T) {
 
-	var v1 = Video{
+	/*var v1 = Video{
 		Title:       "aaaa",
 		Description: "bbb",
 		Id:          "a2a2a2a2",
@@ -106,11 +105,16 @@ func TestNewSubway(t *testing.T) {
 
 	NewRedisConnWithSubway("127.0.0.1:6379", "root", "")
 
-	exists, err := Exists[Video](v1.Id)
+	filter, err := Filter.CreateFilter[int](GetViewModelName(Program{}), "State", 0, Subway.GetLib())
 	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println(exists)
+	//Get data with the same conditions
+
+	dataIds := filter.GetSameConditions(0, Filter.GreaterOREqual[int])
+
+	fmt.Println(dataIds)
 	/*
 		read, err := Read[Video](v1.Id)
 		if err != nil {

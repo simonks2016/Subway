@@ -33,7 +33,6 @@ func (this *FilterField[fieldType]) GetSameConditions(Conditions fieldType, Comp
 			return nil
 		}
 	}
-
 	var data []string
 	//get the
 	for key, value := range this._map {
@@ -128,15 +127,20 @@ func (this *FilterField[fieldType]) getAllData() error {
 	}
 
 	for i := 0; i < num; i++ {
-		var key, value = hashMap[i].([]uint8), hashMap[i+1].([]uint8)
+
+		var index = i * 2
+		var index2 = index + 1
+		var key, value = hashMap[index].([]uint8), hashMap[index2].([]uint8)
 		k1 := string(key)
 		v1 := string(value)
 
 		//convert to key
-		k2, err := Convert[fieldType](k1)
-		if err != nil && k2 != nil {
+		k2, err1 := Convert[fieldType](k1)
+		if k2 != nil {
 			//add to map
 			_newMap[k2.(fieldType)] = SplitString(v1)
+		} else {
+			return err1
 		}
 	}
 

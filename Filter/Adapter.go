@@ -40,29 +40,30 @@ func Convert[FType FieldType](input any) (any, error) {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		parseInt, err := strconv.ParseInt(inputString, 0, 64)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
-		return parseInt, nil
+		return ReflectConvert(parseInt, t1)
+
 	case reflect.Float32, reflect.Float64:
 		parseFloat, err := strconv.ParseFloat(inputString, 64)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
-		return parseFloat, nil
+		return ReflectConvert(parseFloat, t1)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		parseUint, err := strconv.ParseUint(inputString, 0, 64)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
-		return parseUint, nil
+		return ReflectConvert(parseUint, t1)
 	case reflect.String:
 		return inputString, nil
 	case reflect.Bool:
 		parseBool, err := strconv.ParseBool(inputString)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
-		return parseBool, err
+		return ReflectConvert(parseBool, t1)
 	default:
 		return nil, errors.New(fmt.Sprintf("we don't support this type(%s)", t1.Name()))
 
@@ -155,4 +156,13 @@ func Uint82String(v1 any) string {
 		return fmt.Sprintf("%v", v1)
 	}
 
+}
+
+func ReflectConvert(data any, t1 reflect.Type) (any, error) {
+
+	if reflect.ValueOf(data).CanConvert(t1) {
+		return reflect.ValueOf(data).Convert(t1).Interface(), nil
+	} else {
+		return nil, errors.New("not Convert to this type")
+	}
 }
