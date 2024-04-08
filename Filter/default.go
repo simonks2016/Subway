@@ -158,7 +158,7 @@ func (this *FilterField[fieldType]) Output() (string, fieldType) {
 
 func (this *FilterField[fieldType]) Rebuild(keyName string, value any, ol *Core.OperationLib) *FilterField[fieldType] {
 
-	if value != nil && !reflect.ValueOf(value).IsZero() && !reflect.ValueOf(value).IsNil() {
+	if value != nil && !reflect.ValueOf(value).IsZero() {
 		//convert
 		v1, err := Convert[fieldType](value)
 		//not error
