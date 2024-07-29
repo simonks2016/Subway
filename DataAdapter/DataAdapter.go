@@ -396,6 +396,7 @@ func (this *DataAdapter[ViewModel]) rebuildDynamicFields(typeName string, fieldN
 				keyName = reflect.ValueOf(Filter.NewKeyId(ViewModelName, fieldName))
 				value = reflect.ValueOf("")
 			}
+
 			//call the function
 			resultValues := currentField.MethodByName(callRebuildFunc).Call([]reflect.Value{
 				keyName,

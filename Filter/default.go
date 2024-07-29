@@ -166,7 +166,7 @@ func (this *FilterField[fieldType]) Rebuild(keyName string, value any, ol *Core.
 		//convert
 		v1, err := Convert[fieldType](value)
 		//not error
-		if err != nil {
+		if err == nil {
 			return &FilterField[fieldType]{
 				keyName:      keyName,
 				keyValue:     v1.(fieldType),
