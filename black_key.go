@@ -28,3 +28,14 @@ func ExistBackKey(ViewModel, DataId string) (bool, error) {
 	var op = Subway.GetLib()
 	return op.Exist(key)
 }
+
+func DelBackKey(ViewModel, DataId string) error {
+
+	if Subway == nil {
+		return errors.New("you have not set up Subway")
+	}
+
+	var key = newBlackKey(ViewModel, DataId)
+	var op = Subway.GetLib()
+	return op.Delete(key)
+}
